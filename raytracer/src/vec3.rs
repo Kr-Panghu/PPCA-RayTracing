@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub, Neg, Div, Mul, AddAssign, MulAssign, SubAssign};
 //use std::cmp::PartialEq;
-
+use crate::rtweekend;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f64,
@@ -102,6 +102,14 @@ impl Vec3 {
         let mut x2 = self.y; if x2 < 0.0 {x2 = -x2;}
         let mut x3 = self.z; if x3 < 0.0 {x3 = -x3;}
         return x1 < s && x2 < s && x3 < s
+    }
+    pub fn random_in_unit_disk() -> Vec3 {
+        loop {
+            let p = Vec3::new(rtweekend::random_double_2(-1.0, 1.0), rtweekend::random_double_2(-1.0,1.0), 0.0);
+            if p.squared_length() < 1.0 {
+                return p
+            }
+        }
     }
 }
 
@@ -260,6 +268,17 @@ impl PartialEq<f64> for Vec3 {
         self.z == *other
     }
 }
+
+
+
+
+
+
+//----------------------------------------------------------
+
+
+
+
 
 #[cfg(test)]
 mod tests {
