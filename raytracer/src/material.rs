@@ -86,23 +86,14 @@ impl Material for lambertian {
     fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, mut scattered: &mut scene::Ray) -> bool {
         let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();
         //scattered = &mut scene::Ray::new(rec.p, scatter_direction);
-        // (*scattered).orig = rec.p;
-        // (*scattered).dir = scatter_direction;
-        // //attenuation = &mut self.albedo;
-        // (*attenuation).x = self.albedo.x();
-        // (*attenuation).y = self.albedo.y();
-        // (*attenuation).z = self.albedo.z();
         if scatter_direction.near_zero() {scatter_direction = rec.normal;}
-        scattered.orig.x = rec.p.x();
-        scattered.orig.y = rec.p.y();
-        scattered.orig.z = rec.p.z();
-        scattered.dir.x = scatter_direction.x();
-        scattered.dir.y = scatter_direction.y();
-        scattered.dir.z = scatter_direction.z();
+        scattered.orig = rec.p;
+        scattered.dir = scatter_direction;
         //attenuation = &mut self.albedo;
-        attenuation.x = self.albedo.x();
-        attenuation.y = self.albedo.y();
-        attenuation.z = self.albedo.z();
+        *attenuation = self.albedo.clone();
+        // attenuation.x = self.albedo.x();
+        // attenuation.y = self.albedo.y();
+        // attenuation.z = self.albedo.z();
         return true
     }
 }
@@ -126,23 +117,12 @@ impl Material for metal {
     fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut scene::Ray) -> bool{
         let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
         // scattered = &mut scene::Ray::new(rec.p, reflected);
-        // attenuation = &mut self.albedo;
-        // (*scattered).orig = rec.p;
-        // (*scattered).dir = reflected;
-        // //attenuation = &mut self.albedo;
-        // (*attenuation).x = self.albedo.x();
-        // (*attenuation).y = self.albedo.y();
-        // (*attenuation).z = self.albedo.z();
-        scattered.orig.x = rec.p.x();
-        scattered.orig.y = rec.p.y();
-        scattered.orig.z = rec.p.z();
-        scattered.dir.x = reflected.x();
-        scattered.dir.y = reflected.y();
-        scattered.dir.z = reflected.z();
-        //attenuation = &mut self.albedo;
-        attenuation.x = self.albedo.x();
-        attenuation.y = self.albedo.y();
-        attenuation.z = self.albedo.z();
+        scattered.orig = rec.p;
+        scattered.dir = reflected;
+        *attenuation = self.albedo.clone();
+        // attenuation.x = self.albedo.x();
+        // attenuation.y = self.albedo.y();
+        // attenuation.z = self.albedo.z();
         if Vec3::dot(scattered.direction(), &rec.normal) > 0.0 { return true }
         else { return false }
     }

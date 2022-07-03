@@ -141,6 +141,7 @@ pub fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> f64{
 //     Vec3::ones() * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
 // }
 
+#[derive(Clone)] 
 pub struct hit_record {
     pub p: point3,        //交点
     pub normal: Vec3,     //法向量
@@ -192,12 +193,6 @@ impl hittable for Sphere {
             if root < t_min || t_max < root {
                 return false;
             }
-            // rec.t = t;
-            // rec.p = r.at(t);
-            // let outward_normal = (rec.p - self.center) / self.radius;
-            // rec.set_face_normal(r, &outward_normal);
-            // rec.mat_ptr = Rc::clone(&self.material);  //????????
-            // return true
         }
         rec.t = root;
         rec.p = r.at(rec.t);
@@ -244,11 +239,12 @@ impl hittable for hittable_list {
             if (*object).hit(r, t_min, closest_so_far, temp_rec) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
-                //rec = temp_rec;
-                rec.front_face = (&temp_rec).front_face;
-                rec.t = (&temp_rec).t;
-                rec.normal = Vec3::new((&temp_rec).normal.x,(&temp_rec).normal.y,(&temp_rec).normal.z);
-                rec.p = Vec3::new((&temp_rec).p.x,(&temp_rec).p.y,(&temp_rec).p.z);
+                *rec = temp_rec.clone();
+                // rec.front_face = (&temp_rec).front_face;
+                // rec.t = (&temp_rec).t;
+                // rec.normal = Vec3::new((&temp_rec).normal.x,(&temp_rec).normal.y,(&temp_rec).normal.z);
+                // rec.p = Vec3::new((&temp_rec).p.x,(&temp_rec).p.y,(&temp_rec).p.z);
+                // rec.mat_ptr = Rc::clone(&temp_rec.mat_ptr);
             }
         }
         return hit_anything;

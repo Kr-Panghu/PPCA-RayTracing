@@ -83,17 +83,13 @@ pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec
     if world.hit(r, 0.001, infinity, &mut rec) {
         let mut scattered = scene::Ray::new(Vec3::zero(),Vec3::zero());
         let mut attenuation = Vec3::zero();
-        //let target = rec.p + rec.normal + random_unit_vector();
         //let target = rec.p + rtweekend::random_in_hemisphere(&rec.normal);
-
-        //问题代码
         if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
             // print!("Debug atten     : {} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
             // print!("Debug scatt.orig: {} {} {}\n", scattered.orig.x(), scattered.orig.y(), scattered.orig.z());
             // print!("Debug scatt.dir : {} {} {}\n", scattered.dir.x(), scattered.dir.y(), scattered.dir.z());
             return Vec3::cdot(&attenuation, &ray_color(&scattered, world, depth - 1))
         }
-
         //return ray_color(&scene::Ray::new(rec.p, target - rec.p), world, depth - 1) * 0.5
         return Vec3::zero()
     }
