@@ -101,14 +101,14 @@ impl Material for lambertian {
 
 pub struct metal {
     albedo: Vec3,
-    //fuzz: f64,
+    fuzz: f64,
 }
 
 impl metal {
-    pub fn new(a: &Vec3) -> Self {
+    pub fn new(a: &Vec3, f: f64) -> Self {
         Self {
             albedo: Vec3::new(a.x(),a.y(),a.z()),
-            //fuzz: f64::max(1.0, f),
+            fuzz: f64::min(1.0, f),
         }
     }
 }
@@ -117,8 +117,9 @@ impl Material for metal {
     fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut scene::Ray) -> bool{
         let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
         // scattered = &mut scene::Ray::new(rec.p, reflected);
+        //模糊反射 Fuzzy Reflection
         scattered.orig = rec.p;
-        scattered.dir = reflected;
+        scattered.dir = reflected + rtweekend::random_in_unit_sphere() * self.fuzz;
         *attenuation = self.albedo.clone();
         // attenuation.x = self.albedo.x();
         // attenuation.y = self.albedo.y();
@@ -128,13 +129,25 @@ impl Material for metal {
     }
 }
 
+//dielectric: 电介质,绝缘体
+//水、玻璃和钻石等透明材料是电介质
+//当光线射到它们上时，它分裂为反射射线和折射（透射）射线
+//通过在反射和折射之间随机选择，并且每次交互仅生成一条散射射线
 pub struct dielectric {
-    ref_idx: f64,
+    ir: f64, //index of refraction
 }
 
 impl dielectric {
-    pub fn new(ri: f64) -> Self {
-        Self {ref_idx: ri}
+    pub fn new(index_of_refraction: f64) -> Self {
+        Self {ir: index_of_refraction}
+    }
+
+    pub fn reflectence(&self, cosine: f64, ref_idx: f64) -> f64 {
+        //使用Schlick近似法计算反射率
+        let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+        r0 = r0 * r0;
+        let tmp = 1.0 - cosine;
+        return r0 + (1.0 - r0) * tmp*tmp*tmp*tmp*tmp;
     }
 }
 
@@ -144,14 +157,22 @@ impl Material for dielectric {
         attenuation.x = 1.0;
         attenuation.y = 1.0;
         attenuation.z = 1.0;
-        let etai_over_etat: f64;
-        if rec.front_face {etai_over_etat = 1.0 / self.ref_idx;}
-        else {etai_over_etat = self.ref_idx;}
+        let refraction_ratio: f64;
+        if rec.front_face {refraction_ratio = 1.0 / self.ir;}
+        else {refraction_ratio = self.ir;}
+
         let unit_direction = r_in.direction().unit();
-        let refracted = Vec3::refract(&unit_direction, &rec.normal, etai_over_etat);
-        //scattered = &mut scene::Ray::new(rec.p, refracted);
+        let cos_theta = f64::min(Vec3::dot(&-unit_direction, &rec.normal), 1.0);
+        let sin_theta = f64::sqrt(1.0 - cos_theta * cos_theta);
+
+        let cannot_refract: bool = refraction_ratio * sin_theta > 1.0;
+        let direction: Vec3;
+
+        if cannot_refract {direction = Vec3::reflect(&unit_direction, &rec.normal);}
+        else {direction = Vec3::refract(&unit_direction, &rec.normal, refraction_ratio);}
+
         scattered.orig = rec.p;
-        scattered.dir = refracted;
+        scattered.dir = direction;
         return true
     }
 }

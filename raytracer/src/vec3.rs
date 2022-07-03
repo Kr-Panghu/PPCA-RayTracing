@@ -81,7 +81,7 @@ impl Vec3 {
 
     //折射
     pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
-        let cos_theta = Vec3::dot(&(-*uv), n);
+        let cos_theta = f64::min(Vec3::dot(&(-*uv), n), 1.0);
         let r_out_perp = (*uv + (*n) * cos_theta) * etai_over_etat;
         let mut tmp = 1.0 - r_out_perp.squared_length();
         if tmp < 0.0 {tmp = -tmp;}

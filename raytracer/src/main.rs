@@ -173,8 +173,13 @@ pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec
 //     result.save("output/test.png").unwrap();
 // }
 
-//Version 2
 
+
+//-------------------------------------------------------------
+
+
+
+//Version 2
 // fn main() {
 //     //Image
 //     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
@@ -212,6 +217,11 @@ pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec
 // }
 
 
+
+//-------------------------------------------------------------
+
+
+
 //Version 3
 fn main() {
     //Image
@@ -228,22 +238,31 @@ fn main() {
     // world.add(ptr_2);
 
     //World
-    //let mut world = scene::hittable_list::new_without_para();
-    let material_ground = Rc::new(material::lambertian::new(&Vec3::new(0.8,0.8,0.0)));
-    let material_center = Rc::new(material::lambertian::new(&Vec3::new(0.7,0.3,0.3)));
-    let material_left = Rc::new(material::metal::new(&Vec3::new(0.8,0.8,0.8)));
-    let material_right = Rc::new(material::metal::new(&Vec3::new(0.8,0.6,0.2)));
+    // image_12
+    // let material_ground = Rc::new(material::lambertian::new(&Vec3::new(0.8,0.8,0.0)));
+    // let material_center = Rc::new(material::lambertian::new(&Vec3::new(0.7,0.3,0.3)));
+    // let material_left = Rc::new(material::metal::new(&Vec3::new(0.8,0.8,0.8), 0.3));
+    // let material_right = Rc::new(material::metal::new(&Vec3::new(0.8,0.6,0.2), 1.0));
 
+    // image_14
+    // let material_ground = Rc::new(material::lambertian::new(&Vec3::new(0.8,0.8,0.0)));
+    // let material_center = Rc::new(material::dielectric::new(1.5));
+    // let material_left = Rc::new(material::dielectric::new(1.5));
+    // let material_right = Rc::new(material::metal::new(&Vec3::new(0.8,0.6,0.2), 1.0));
+
+    // image_15
+    let material_ground = Rc::new(material::lambertian::new(&Vec3::new(0.8,0.8,0.0)));
+    let material_center = Rc::new(material::lambertian::new(&Vec3::new(0.1,0.2,0.5)));
+    let material_left = Rc::new(material::dielectric::new(1.5));
+    let material_right = Rc::new(material::metal::new(&Vec3::new(0.8,0.6,0.2), 0.0));
+    let material_left_clone = Rc::clone(&material_left);
     let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
     //world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
 
     world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, material_center)));
     world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left)));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.4, material_left_clone)));
     world.add(Rc::new(scene::Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right)));
-
-    // world.add(Rc::new(scene::Sphere::new(Vec3::new(1.0, 0.2, -0.9), 0.5, material_center)));
-    // world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.2, 1.0), 0.5, material_left)));
-    // world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.2, 0.9), 0.5, material_right)));
 
     //Camera
     // let viewport_height = 2.0;
@@ -278,7 +297,7 @@ fn main() {
             // pixel_color.write_color();
         }
     }
-        let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
+    let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
     render_text(&mut result, msg.as_str());
     //result.save("output/test.png").unwrap();
 }
