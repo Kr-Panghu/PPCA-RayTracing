@@ -4,17 +4,26 @@
 mod material;
 mod scene;
 mod vec3;
-
+mod rtweekend;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
-use scene::example_scene;
+//use scene::example_scene;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use threadpool::ThreadPool;
+use std::rc::Rc;
 pub use vec3::Vec3;
+//use std::io;
+use rand::Rng;
 
-const AUTHOR: &str = "Alex Chi";
+const AUTHOR: &str = "Kr Cen";
+
+const infinity: f64 = std::f64::INFINITY;
+const pi: f64 = 3.1415926535897932385;
+
+type point3 = Vec3;
+type color = Vec3;
 
 pub struct World {
     pub height: u32,
@@ -65,76 +74,215 @@ fn render_text(image: &mut RgbImage, msg: &str) {
     );
 }
 
-fn main() {
-    // get environment variable CI, which is true for GitHub Action
-    let is_ci = is_ci();
+const max_depth: i32 = 50; //限制递归深度
 
-    // jobs: split image into how many parts
-    // workers: maximum allowed concurrent running threads
-    let (n_jobs, n_workers): (usize, usize) = if is_ci { (32, 2) } else { (16, 2) };
+//光线: 渐变色
+pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec3 {
+    let mut rec = scene::hit_record::new();
+    if depth <= 0 { return Vec3::zero() }
+    if world.hit(r, 0.001, infinity, &mut rec) {
+        let mut scattered = scene::Ray::new(Vec3::zero(),Vec3::zero());
+        let mut attenuation = Vec3::zero();
+        //let target = rec.p + rec.normal + random_unit_vector();
+        //let target = rec.p + rtweekend::random_in_hemisphere(&rec.normal);
 
-    println!(
-        "CI: {}, using {} jobs and {} workers",
-        is_ci, n_jobs, n_workers
-    );
-
-    let height = 512;
-    let width = 1024;
-
-    // create a channel to send objects between threads
-    let (tx, rx) = channel();
-    let pool = ThreadPool::new(n_workers);
-
-    let bar = ProgressBar::new(n_jobs as u64);
-
-    // use Arc to pass one instance of World to multiple threads
-    let world = Arc::new(example_scene());
-
-    for i in 0..n_jobs {
-        let tx = tx.clone();
-        let world_ptr = world.clone();
-        pool.execute(move || {
-            // here, we render some of the rows of image in one thread
-            let row_begin = height as usize * i / n_jobs;
-            let row_end = height as usize * (i + 1) / n_jobs;
-            let render_height = row_end - row_begin;
-            let mut img: RgbImage = ImageBuffer::new(width, render_height as u32);
-            for x in 0..width {
-                // img_y is the row in partial rendered image
-                // y is real position in final image
-                for (img_y, y) in (row_begin..row_end).enumerate() {
-                    let y = y as u32;
-                    let pixel = img.get_pixel_mut(x, img_y as u32);
-                    let color = world_ptr.color(x, y);
-                    *pixel = Rgb([color, color, color]);
-                }
-            }
-            // send row range and rendered image to main thread
-            tx.send((row_begin..row_end, img))
-                .expect("failed to send result");
-        });
-    }
-
-    let mut result: RgbImage = ImageBuffer::new(width, height);
-
-    for (rows, data) in rx.iter().take(n_jobs) {
-        // idx is the corrsponding row in partial-rendered image
-        for (idx, row) in rows.enumerate() {
-            for col in 0..width {
-                let row = row as u32;
-                let idx = idx as u32;
-                *result.get_pixel_mut(col, row) = *data.get_pixel(col, idx);
-            }
+        //问题代码
+        if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
+            // print!("Debug atten     : {} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
+            // print!("Debug scatt.orig: {} {} {}\n", scattered.orig.x(), scattered.orig.y(), scattered.orig.z());
+            // print!("Debug scatt.dir : {} {} {}\n", scattered.dir.x(), scattered.dir.y(), scattered.dir.z());
+            return Vec3::cdot(&attenuation, &ray_color(&scattered, world, depth - 1))
         }
-        bar.inc(1);
+
+        //return ray_color(&scene::Ray::new(rec.p, target - rec.p), world, depth - 1) * 0.5
+        return Vec3::zero()
     }
-    bar.finish();
+    let unit_direction = r.direction().unit();
+    let t = (unit_direction.y() + 1.0) * 0.5;
+    Vec3::ones() * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
+}
 
-    // render commit ID and author name on image
+
+// fn main() {
+//     // get environment variable CI, which is true for GitHub Action
+//     let is_ci = is_ci();
+
+//     // jobs: split image into how many parts
+//     // workers: maximum allowed concurrent running threads
+//     let (n_jobs, n_workers): (usize, usize) = if is_ci { (32, 2) } else { (16, 2) };
+
+//     println!(
+//         "CI: {}, using {} jobs and {} workers",
+//         is_ci, n_jobs, n_workers
+//     );
+
+//     let height = 512;
+//     let width = 1024;
+
+//     // create a channel to send objects between threads
+//     let (tx, rx) = channel();
+//     let pool = ThreadPool::new(n_workers);
+
+//     let bar = ProgressBar::new(n_jobs as u64);
+
+//     // use Arc to pass one instance of World to multiple threads
+//     let world = Arc::new(example_scene());
+
+//     for i in 0..n_jobs {
+//         let tx = tx.clone();
+//         let world_ptr = world.clone();
+//         pool.execute(move || {
+//             // here, we render some of the rows of image in one thread
+//             let row_begin = height as usize * i / n_jobs;
+//             let row_end = height as usize * (i + 1) / n_jobs;
+//             let render_height = row_end - row_begin;
+//             let mut img: RgbImage = ImageBuffer::new(width, render_height as u32);
+//             for x in 0..width {
+//                 // img_y is the row in partial rendered image
+//                 // y is real position in final image
+//                 for (img_y, y) in (row_begin..row_end).enumerate() {
+//                     let y = y as u32;
+//                     let pixel = img.get_pixel_mut(x, img_y as u32);
+//                     let color = world_ptr.color(x, y);
+//                     *pixel = Rgb([color, color, color]);
+//                 }
+//             }
+//             // send row range and rendered image to main thread
+//             tx.send((row_begin..row_end, img))
+//                 .expect("failed to send result");
+//         });
+//     }
+
+//     let mut result: RgbImage = ImageBuffer::new(width, height);
+
+//     for (rows, data) in rx.iter().take(n_jobs) {
+//         // idx is the corrsponding row in partial-rendered image
+//         for (idx, row) in rows.enumerate() {
+//             for col in 0..width {
+//                 let row = row as u32;
+//                 let idx = idx as u32;
+//                 *result.get_pixel_mut(col, row) = *data.get_pixel(col, idx);
+//             }
+//         }
+//         bar.inc(1);
+//     }
+//     bar.finish();
+
+//     // render commit ID and author name on image
+//     let msg = get_text();
+//     println!("Extra Info: {}", msg);
+
+//     render_text(&mut result, msg.as_str());
+
+//     result.save("output/test.png").unwrap();
+// }
+
+//Version 2
+
+// fn main() {
+//     //Image
+//     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
+//     let image_width: i32 = 400;
+//     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
+
+//     //Camera
+//     let viewport_height = 2.0;
+//     let viewport_width = aspect_ratio * viewport_height;
+//     let focal_length = 1.0;  //焦距
+
+//     let origin: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+//     let horizontal: Vec3 = Vec3::new(viewport_width, 0.0, 0.0);
+//     let vertical: Vec3 = Vec3::new(0.0, viewport_height, 0.0);
+
+//     //视口左下角的坐标
+//     let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+//     let msg = get_text();
+//     //Render
+//     print!("P3\n{} {}\n255\n", image_width, image_height);
+
+//     for j in (0..image_height).rev(){
+//         for i in 0..image_width {
+//             //print!("j = {} ", j);
+//             let u: f64 = (i as f64) / (image_width - 1) as f64;
+//             let v: f64 = (j as f64) / (image_height - 1) as f64;
+//             let r = scene::Ray::new(origin, lower_left_corner + horizontal * u + vertical * v - origin);
+//             let pixel_color: Vec3 = scene::ray_color(&r);
+//             pixel_color.write_color();
+//         }
+//     }
+//         let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
+//     render_text(&mut result, msg.as_str());
+//     //result.save("output/test.png").unwrap();
+// }
+
+
+//Version 3
+fn main() {
+    //Image
+    let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
+    let image_width: i32 = 400;
+    let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
+    let samples_per_pixel: i32 = 100;
+
+    // let new_sphere_1 = scene::Sphere::new(Vec3::new(0.0,0.0,-1.0), 0.5, Rc::new(material::lambertian::new(&Vec3::ones())));
+    // let ptr_1 = Rc::new(new_sphere_1);
+    // let new_sphere_2 = scene::Sphere::new(Vec3::new(0.0,-100.5,-1.0), 100.0, Rc::new(material::lambertian::new(&Vec3::ones())));
+    // let ptr_2 = Rc::new(new_sphere_2);
+    // let mut world = scene::hittable_list::new(ptr_1);
+    // world.add(ptr_2);
+
+    //World
+    //let mut world = scene::hittable_list::new_without_para();
+    let material_ground = Rc::new(material::lambertian::new(&Vec3::new(0.8,0.8,0.0)));
+    let material_center = Rc::new(material::lambertian::new(&Vec3::new(0.7,0.3,0.3)));
+    let material_left = Rc::new(material::metal::new(&Vec3::new(0.8,0.8,0.8)));
+    let material_right = Rc::new(material::metal::new(&Vec3::new(0.8,0.6,0.2)));
+
+    let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
+    //world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
+
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, material_center)));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, material_left)));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, material_right)));
+
+    // world.add(Rc::new(scene::Sphere::new(Vec3::new(1.0, 0.2, -0.9), 0.5, material_center)));
+    // world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.2, 1.0), 0.5, material_left)));
+    // world.add(Rc::new(scene::Sphere::new(Vec3::new(-1.0, 0.2, 0.9), 0.5, material_right)));
+
+    //Camera
+    // let viewport_height = 2.0;
+    // let viewport_width = aspect_ratio * viewport_height;
+    // let focal_length = 1.0;  //焦距
+
+    // let origin: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+    // let horizontal: Vec3 = Vec3::new(viewport_width, 0.0, 0.0);
+    // let vertical: Vec3 = Vec3::new(0.0, viewport_height, 0.0);
+    let cam = scene::camera::new();
+
+    //视口左下角的坐标
+    //let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
     let msg = get_text();
-    println!("Extra Info: {}", msg);
+    //Render
+    print!("P3\n{} {}\n255\n", image_width, image_height);
 
+    for j in (0..image_height).rev(){
+        for i in 0..image_width {
+            let mut pixel_color = Vec3::zero();
+            for s in 0..samples_per_pixel {
+                let u: f64 = (i as f64 + rtweekend::random_double_1()) / (image_width as f64 - 1.0);
+                let v: f64 = (j as f64 + rtweekend::random_double_1()) / (image_height as f64 - 1.0);
+                let r = cam.get_ray(u, v);
+                pixel_color += ray_color(&r, &world, max_depth);
+            }
+            scene::write_color(pixel_color, samples_per_pixel);
+            // let u: f64 = (i as f64) / (image_width - 1) as f64;
+            // let v: f64 = (j as f64) / (image_height - 1) as f64;
+            // let r = scene::Ray::new(origin, lower_left_corner + horizontal * u + vertical * v - origin);
+            // let pixel_color: Vec3 = scene::ray_color(&r, &world);
+            // pixel_color.write_color();
+        }
+    }
+        let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
     render_text(&mut result, msg.as_str());
-
-    result.save("output/test.png").unwrap();
+    //result.save("output/test.png").unwrap();
 }
