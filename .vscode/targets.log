@@ -10,7 +10,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 make: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Sun Jul  3 17:15:04 2022
+# Make data base, printed on Sun Jul  3 19:22:47 2022
 
 # Variables
 
@@ -41,7 +41,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 __CFBundleIdentifier = com.microsoft.VSCode
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /var/folders/w8/0bz50j655wq64tz4_03w95qc0000gn/T/vscode-ipc-d929262f-4ffe-4940-b7af-56a49ac9b433.sock
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/w8/0bz50j655wq64tz4_03w95qc0000gn/T/vscode-ipc-c1a1c51a-54b6-49a6-8720-3be31184af71.sock
 # environment
 VSCODE_CWD = /
 # environment
@@ -56,6 +56,7 @@ ELECTRON_RUN_AS_NODE = 1
 SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.5hScFpMYUC/Listeners
 # automatic
 %F = $(notdir $%)
+ 
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
@@ -75,6 +76,7 @@ LOGNAME = kr
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
+ 
 VSCODE_HANDLES_UNCAUGHT_ERRORS = true
 # automatic
 ^D = $(patsubst %/,%,$(dir $^))
@@ -123,6 +125,7 @@ COMMAND_MODE = unix2003
 # default
 MAKEFILES := 
 # automatic
+ 
 <F = $(notdir $<)
 # environment
 LC_ALL = C
@@ -261,6 +264,6 @@ fmt:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Sun Jul  3 17:15:04 2022
+# Finished Make data base on Sun Jul  3 19:22:47 2022
 
  
