@@ -179,7 +179,7 @@ pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec
 //-------------------------------------------------------------
 
 
-
+/*
 
 //Version 3
 fn main() {
@@ -257,6 +257,106 @@ fn main() {
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = (lookfrom - lookat).length();
     let aperture = 2.0;
+    let cam = scene::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus);
+
+    //视口左下角的坐标
+    //let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+    let msg = get_text();
+    //Render
+    print!("P3\n{} {}\n255\n", image_width, image_height);
+
+    for j in (0..image_height).rev(){
+        for i in 0..image_width {
+            let mut pixel_color = Vec3::zero();
+            for s in 0..samples_per_pixel {
+                let u: f64 = (i as f64 + rtweekend::random_double_1()) / (image_width as f64 - 1.0);
+                let v: f64 = (j as f64 + rtweekend::random_double_1()) / (image_height as f64 - 1.0);
+                let r = cam.get_ray(u, v);
+                pixel_color += ray_color(&r, &world, max_depth);
+            }
+            scene::write_color(pixel_color, samples_per_pixel);
+            // let u: f64 = (i as f64) / (image_width - 1) as f64;
+            // let v: f64 = (j as f64) / (image_height - 1) as f64;
+            // let r = scene::Ray::new(origin, lower_left_corner + horizontal * u + vertical * v - origin);
+            // let pixel_color: Vec3 = scene::ray_color(&r, &world);
+            // pixel_color.write_color();
+        }
+    }
+    let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
+    render_text(&mut result, msg.as_str());
+    //result.save("output/test.png").unwrap();
+}
+
+
+*/
+
+
+
+
+//Version 4: Final_Scene
+
+fn random_scene() -> scene::hittable_list {
+    let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
+    let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
+
+    for a in (-11)..12 {
+        for b in (-11)..12 {
+            let choose_mat = rtweekend::random_double_1();
+            let center = Vec3::new(a as f64 + 0.9 * rtweekend::random_double_1(), 0.2, b as f64 + rtweekend::random_double_1());
+
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let sphere_material: Rc<dyn material::Material>;
+                if choose_mat < 0.8 {
+                    //diffuse
+                    let v1 = Vec3::random_vector_1();
+                    let v2 = Vec3::random_vector_1();
+                    let albedo = Vec3::cdot(&v1, &v2);
+                    sphere_material = Rc::new(material::lambertian::new(&albedo));
+                    world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+                }
+                else if choose_mat < 0.95 {
+                    //metal
+                    let albedo = Vec3::random_vector_2(0.5, 1.0);
+                    let fuzz = rtweekend::random_double_2(0.0, 0.5);
+                    sphere_material = Rc::new(material::metal::new(&albedo, fuzz));
+                    world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+                }
+                else {
+                    //glass
+                    sphere_material = Rc::new(material::dielectric::new(1.5));
+                    world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+                }
+            }
+        }
+    } 
+
+    let material1 = Rc::new(material::dielectric::new(1.5));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0,1.0,0.0), 1.0, material1)));
+
+    let material2 = Rc::new(material::lambertian::new(&Vec3::new(0.4,0.2,0.1)));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(-4.0,1.0,0.0), 1.0, material2)));
+
+    let material3 = Rc::new(material::metal::new(&Vec3::new(0.7,0.6,0.5), 0.0));
+    world.add(Rc::new(scene::Sphere::new(Vec3::new(4.0,1.0,0.0), 1.0, material3)));
+
+    return world
+}
+
+fn main() {
+    //Image
+    let aspect_ratio: f64 = 3.0 / 2.0; //纵横比
+    let image_width: i32 = 1200;
+    let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
+    let samples_per_pixel: i32 = 500;
+
+    let world = random_scene();
+
+    // camera
+    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
+    let lookat = Vec3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
     let cam = scene::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus);
 
     //视口左下角的坐标
