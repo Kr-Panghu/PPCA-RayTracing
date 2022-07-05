@@ -6,6 +6,8 @@ use crate::World;
 use crate::ray;
 use std::rc::Rc;
 use crate::material;
+use crate::bvh;
+use crate::moving_sphere;
 // use std::num;
 use raytracer_codegen::make_spheres_impl;
 type point3 = Vec3;
@@ -136,6 +138,9 @@ pub trait hittable {
     fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         true
     }
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+        true
+    }
 }
 
 impl hittable for Sphere {
@@ -162,6 +167,12 @@ impl hittable for Sphere {
         rec.set_face_normal(r, &outward_normal);
         rec.mat_ptr = Rc::clone(&self.material);
         return true
+    }
+    //球体的包围盒
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+        (*output_box).minimum = self.center - Vec3::new(self.radius, self.radius, self.radius);
+        (*output_box).maximum = self.center + Vec3::new(self.radius, self.radius, self.radius);
+        return true;
     }
 }
 
@@ -198,7 +209,7 @@ impl hittable for hittable_list {
         let mut closest_so_far = t_max;
         for object in &self.objects {
             //hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record)
-            if (*object).hit(r, t_min, closest_so_far, temp_rec) {
+            if object.hit(r, t_min, closest_so_far, temp_rec) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
                 *rec = temp_rec.clone();
@@ -210,6 +221,32 @@ impl hittable for hittable_list {
             }
         }
         return hit_anything;
+    }
+
+    fn bounding_box(&self, time0: f64, time1: f64, mut output_box: &mut bvh::aabb) -> bool {
+        if self.objects.len() == 0 {return false}
+
+        let temp_box = &mut bvh::aabb::new();
+        let mut first_box = true;
+
+        for object in &self.objects {
+            let damn = temp_box.clone();
+            if object.bounding_box(time0, time1, temp_box) {return false}
+            if first_box {
+                output_box.minimum = damn.min();
+                output_box.maximum = damn.max();
+            }
+            else {
+                let damn_bro = output_box.clone();
+                let damn_it = temp_box.clone();
+                let damnit = bvh::aabb::surrounding_box(damn_bro, damn_it);
+                output_box.minimum = damnit.min();
+                output_box.maximum = damnit.max();
+                first_box = false;
+            }
+        }
+
+        return true
     }
 }
 

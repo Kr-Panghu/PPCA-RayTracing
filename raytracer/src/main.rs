@@ -382,7 +382,7 @@ fn random_scene() -> scene::hittable_list {
                 }
             }
         }
-    } 
+    }
 
     let material1 = Rc::new(material::dielectric::new(1.5));
     world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0,1.0,0.0), 1.0, material1)));
@@ -405,7 +405,7 @@ fn main() {
     // let samples_per_pixel: i32 = 500;
 
     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
-    let image_width: i32 = 600;
+    let image_width: i32 = 200;
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
     let samples_per_pixel: i32 = 100;
 

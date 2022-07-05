@@ -3,6 +3,7 @@ use crate::scene;
 use crate::material;
 use crate::ray;
 use std::rc::Rc;
+use crate::bvh;
 
 type point3 = Vec3;
 
@@ -54,6 +55,18 @@ impl scene::hittable for moving_sphere {
         let outward_normal: Vec3 = (rec.p - self.center(r.time())) / self.radius;
         rec.set_face_normal(r, &outward_normal);
         rec.mat_ptr = Rc::clone(&self.mat_ptr);
+        return true
+    }
+
+    //移动球体的包围盒
+    fn bounding_box(&self, _time0: f64, _time1: f64, mut output_box: &mut bvh::aabb) -> bool {
+        let box0 = bvh::aabb::new_with_para(&(self.center(_time0) - Vec3::new(self.radius, self.radius, self.radius)), 
+                                  &(self.center(_time0) + Vec3::new(self.radius, self.radius, self.radius)));
+        let box1 = bvh::aabb::new_with_para(&(self.center(_time1) - Vec3::new(self.radius, self.radius, self.radius)),
+                                  &(self.center(_time1) - Vec3::new(self.radius, self.radius, self.radius)));
+        let tmp = bvh::aabb::surrounding_box(box0, box1);
+        output_box.minimum = tmp.minimum.clone();
+        output_box.maximum = tmp.maximum.clone(); //????
         return true
     }
 }
