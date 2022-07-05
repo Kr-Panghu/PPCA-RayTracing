@@ -5,6 +5,10 @@ mod material;
 mod scene;
 mod vec3;
 mod rtweekend;
+mod camera;
+mod ray;
+mod moving_sphere;
+mod bvh;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
@@ -77,11 +81,11 @@ fn render_text(image: &mut RgbImage, msg: &str) {
 const max_depth: i32 = 50; //限制递归深度
 
 //光线: 渐变色
-pub fn ray_color(r: &scene::Ray, world: &dyn scene::hittable, depth: i32) -> Vec3 {
+pub fn ray_color(r: &ray::Ray, world: &dyn scene::hittable, depth: i32) -> Vec3 {
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
     if world.hit(r, 0.001, infinity, &mut rec) {
-        let mut scattered = scene::Ray::new(Vec3::zero(),Vec3::zero());
+        let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
         let mut attenuation = Vec3::zero();
         //let target = rec.p + rtweekend::random_in_hemisphere(&rec.normal);
         if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
@@ -257,7 +261,7 @@ fn main() {
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = (lookfrom - lookat).length();
     let aperture = 2.0;
-    let cam = scene::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus);
+    let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 0.0);
 
     //视口左下角的坐标
     //let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
@@ -287,13 +291,62 @@ fn main() {
     //result.save("output/test.png").unwrap();
 }
 
-
 */
 
 
 
 
+
+
+
 //Version 4: Final_Scene
+
+// fn random_scene() -> scene::hittable_list {
+//     let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
+//     let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
+
+//     for a in (-11)..12 {
+//         for b in (-11)..12 {
+//             let choose_mat = rtweekend::random_double_1();
+//             let center = Vec3::new(a as f64 + 0.9 * rtweekend::random_double_1(), 0.2, b as f64 + rtweekend::random_double_1());
+
+//             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+//                 let sphere_material: Rc<dyn material::Material>;
+//                 if choose_mat < 0.8 {
+//                     //diffuse
+//                     let v1 = Vec3::random_vector_1();
+//                     let v2 = Vec3::random_vector_1();
+//                     let albedo = Vec3::cdot(&v1, &v2);
+//                     sphere_material = Rc::new(material::lambertian::new(&albedo));
+//                     world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+//                 }
+//                 else if choose_mat < 0.95 {
+//                     //metal
+//                     let albedo = Vec3::random_vector_2(0.5, 1.0);
+//                     let fuzz = rtweekend::random_double_2(0.0, 0.5);
+//                     sphere_material = Rc::new(material::metal::new(&albedo, fuzz));
+//                     world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+//                 }
+//                 else {
+//                     //glass
+//                     sphere_material = Rc::new(material::dielectric::new(1.5));
+//                     world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+//                 }
+//             }
+//         }
+//     } 
+
+//     let material1 = Rc::new(material::dielectric::new(1.5));
+//     world.add(Rc::new(scene::Sphere::new(Vec3::new(0.0,1.0,0.0), 1.0, material1)));
+
+//     let material2 = Rc::new(material::lambertian::new(&Vec3::new(0.4,0.2,0.1)));
+//     world.add(Rc::new(scene::Sphere::new(Vec3::new(-4.0,1.0,0.0), 1.0, material2)));
+
+//     let material3 = Rc::new(material::metal::new(&Vec3::new(0.7,0.6,0.5), 0.0));
+//     world.add(Rc::new(scene::Sphere::new(Vec3::new(4.0,1.0,0.0), 1.0, material3)));
+
+//     return world
+// }
 
 fn random_scene() -> scene::hittable_list {
     let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
@@ -312,7 +365,8 @@ fn random_scene() -> scene::hittable_list {
                     let v2 = Vec3::random_vector_1();
                     let albedo = Vec3::cdot(&v1, &v2);
                     sphere_material = Rc::new(material::lambertian::new(&albedo));
-                    world.add(Rc::new(scene::Sphere::new(center, 0.2, sphere_material)));
+                    let center2 = center + Vec3::new(0.0, rtweekend::random_double_2(0.0, 0.5), 0.0);
+                    world.add(Rc::new(moving_sphere::moving_sphere::new(center, center2, 0.0, 1.0, 0.2, sphere_material)));
                 }
                 else if choose_mat < 0.95 {
                     //metal
@@ -344,10 +398,16 @@ fn random_scene() -> scene::hittable_list {
 
 fn main() {
     //Image
-    let aspect_ratio: f64 = 3.0 / 2.0; //纵横比
-    let image_width: i32 = 1200;
+    // Book1: Final Scene
+    // let aspect_ratio: f64 = 3.0 / 2.0; //纵横比
+    // let image_width: i32 = 1200;
+    // let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
+    // let samples_per_pixel: i32 = 500;
+
+    let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
+    let image_width: i32 = 600;
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    let samples_per_pixel: i32 = 500;
+    let samples_per_pixel: i32 = 100;
 
     let world = random_scene();
 
@@ -357,7 +417,7 @@ fn main() {
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
     let aperture = 0.1;
-    let cam = scene::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus);
+    let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     //视口左下角的坐标
     //let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
@@ -386,3 +446,4 @@ fn main() {
     render_text(&mut result, msg.as_str());
     //result.save("output/test.png").unwrap();
 }
+

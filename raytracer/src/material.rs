@@ -3,6 +3,7 @@
 use crate::scene;
 use crate::Vec3;
 use crate::rtweekend;
+use crate::ray;
 // You SHOULD remove above line in your code.
 
 // This file shows necessary examples of how to complete Track 4 and 5.
@@ -14,7 +15,7 @@ pub trait Material {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
-    fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool;
+    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
 }
 
 /// `Lambertian` now takes a generic parameter `T`.
@@ -83,12 +84,13 @@ impl lambertian {
 }
 
 impl Material for lambertian {
-    fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, mut scattered: &mut scene::Ray) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, mut scattered: &mut ray::Ray) -> bool {
         let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();
         //scattered = &mut scene::Ray::new(rec.p, scatter_direction);
         if scatter_direction.near_zero() {scatter_direction = rec.normal;}
         scattered.orig = rec.p;
         scattered.dir = scatter_direction;
+        scattered.tm = r_in.time();
         //attenuation = &mut self.albedo;
         *attenuation = self.albedo.clone();
         // attenuation.x = self.albedo.x();
@@ -114,12 +116,13 @@ impl metal {
 }
 
 impl Material for metal {
-    fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut scene::Ray) -> bool{
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool{
         let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
         // scattered = &mut scene::Ray::new(rec.p, reflected);
         //模糊反射 Fuzzy Reflection
         scattered.orig = rec.p;
         scattered.dir = reflected + rtweekend::random_in_unit_sphere() * self.fuzz;
+        scattered.tm = r_in.time();
         *attenuation = self.albedo.clone();
         // attenuation.x = self.albedo.x();
         // attenuation.y = self.albedo.y();
@@ -152,7 +155,7 @@ impl dielectric {
 }
 
 impl Material for dielectric {
-    fn scatter(&self, r_in: &scene::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut scene::Ray) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
         //attenuation = &mut Vec3::ones();
         attenuation.x = 1.0;
         attenuation.y = 1.0;
@@ -173,6 +176,7 @@ impl Material for dielectric {
 
         scattered.orig = rec.p;
         scattered.dir = direction;
+        scattered.tm = r_in.time();
         return true
     }
 }

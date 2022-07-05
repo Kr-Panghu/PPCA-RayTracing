@@ -3,6 +3,7 @@
 
 use crate::Vec3;
 use crate::World;
+use crate::ray;
 use std::rc::Rc;
 use crate::material;
 // use std::num;
@@ -15,10 +16,6 @@ const pi: f64 = 3.1415926535897932385;
 
 fn random_double() -> f64 {
     random_double()
-}
-
-fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
-    degrees * pi / 180.0
 }
 
 // Call the procedural macro, which will become `make_spheres` function.
@@ -76,42 +73,7 @@ impl Sphere {
 //     World { height: 512 }
 // }
 
-pub struct Ray {
-    pub orig: point3,
-    pub dir: color,
-}
-
-impl Ray {
-    pub fn new(origin: Vec3, direction: Vec3) -> Self {
-        Self {
-            orig: origin,
-            dir: direction,
-        }
-    }
-
-    pub fn origin(&self) -> &Vec3 {
-        &self.orig
-    }
-
-    pub fn direction(&self) -> &Vec3 {
-        &self.dir
-    }
-
-    pub fn at(&self, t: f64) -> Vec3 {
-        self.orig + self.dir * t
-    }
-}
-
-// fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> bool{
-//     let oc: Vec3 = *r.origin() - center;
-//     let a: f64 = Vec3::dot(r.direction(), r.direction());
-//     let b: f64 = 2.0 * Vec3::dot(r.direction(), &oc);
-//     let c: f64 = Vec3::dot(&oc, &oc) - radius * radius;
-//     let discriminant: f64 = b * b - 4.0 * a * c;
-//     return discriminant > 0.0
-// }
-
-pub fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> f64{
+pub fn hit_sphere(center: Vec3, radius: f64, r: &ray::Ray) -> f64{
     let oc: Vec3 = *r.origin() - center;
     let a: f64 = Vec3::dot(r.direction(), r.direction());
     //let b: f64 = 2.0 * Vec3::dot(r.direction(), &oc);
@@ -161,7 +123,7 @@ impl hit_record {
         }
     }
 
-    pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
+    pub fn set_face_normal(&mut self, r: &ray::Ray, outward_normal: &Vec3) {
         self.front_face = Vec3::dot(r.direction(), outward_normal) < 0.0;
         if self.front_face {self.normal = *outward_normal;}
         else {self.normal = -(*outward_normal)}
@@ -171,13 +133,13 @@ impl hit_record {
 //设计一个hittable的trait,并限定t的范围
 //当t_min<t<t_max时才认为有交点
 pub trait hittable {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         true
     }
 }
 
 impl hittable for Sphere {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         let oc: Vec3 = *r.origin() - self.center;
         let a: f64 = r.direction().squared_length();
         let half_b: f64 = Vec3::dot(r.direction(), &oc);
@@ -229,7 +191,7 @@ impl hittable_list {
 }
 
 impl hittable for hittable_list {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, mut rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, mut rec: &mut hit_record) -> bool{
         //let mut temp_rec = hit_record::new();
         let temp_rec = &mut hit_record::new();
         let mut hit_anything = false;
@@ -249,77 +211,6 @@ impl hittable for hittable_list {
         }
         return hit_anything;
     }
-}
-
-//摄像机类
-pub struct camera {
-    origin: point3,
-    lower_left_corner: point3,
-    horizontal: Vec3,
-    vertical: Vec3,
-    u: Vec3, v: Vec3, w: Vec3,
-    lens_radious: f64,
-}
-
-impl camera {
-    // pub fn new() -> Self {
-    //     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
-    //     let viewport_height = 2.0;
-    //     let viewport_width = aspect_ratio * viewport_height;
-    //     let focal_length = 1.0;  //焦距
-    //     Self {
-    //         origin: point3::zero(),
-    //         horizontal: Vec3::new(viewport_width, 0.0, 0.0),
-    //         vertical: Vec3::new(0.0, viewport_height, 0.0),
-    //         lower_left_corner: point3::zero() - Vec3::new(viewport_width, 0.0, 0.0) / 2.0 - Vec3::new(0.0, viewport_height, 0.0) / 2.0 - Vec3::new(0.0, 0.0, focal_length),
-    //     }
-    // }
-
-    pub fn new_with_para(lookfrom: &point3, 
-                         lookat: &point3, 
-                         vup: &Vec3,        //view_up
-                         vfov: f64,         //垂直视野(度)
-                         aspect_ratio: f64, //纵横比
-                         aperture: f64,     //光圈
-                         focus_dist: f64,   //焦点距离
-                        ) -> Self {
-        //可定位相机
-        let theta = degrees_to_radians(vfov);
-        let h = f64::tan(theta/2.0);
-        let viewport_height = 2.0 * h;
-        let viewport_width = aspect_ratio * viewport_height;
-
-        let ww = (*lookfrom - *lookat).unit();
-        let uu = Vec3::cross(*vup, ww).unit();
-        let vv = Vec3::cross(ww, uu);
-
-        //散焦模糊,
-        //从以lookfrom点为中心的磁盘内部生成随机场景光线
-        //半径越大,离焦模糊越大
-        
-        Self {
-            w: ww,
-            u: uu,
-            v: vv,
-            origin: *lookfrom,
-            horizontal: uu * viewport_width * focus_dist,
-            vertical: vv * viewport_height * focus_dist,
-            lower_left_corner: *lookfrom - uu * viewport_width * focus_dist / 2.0 - vv * viewport_height * focus_dist / 2.0 - ww * focus_dist,
-            lens_radious: aperture / 2.0,
-        }
-    }
-
-    // pub fn get_ray(&self, u: f64, v: f64) -> Ray {
-    //     Ray::new(self.origin, self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin)
-    // }
-
-    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
-        let rd: Vec3 = Vec3::random_in_unit_disk() * self.lens_radious;
-        let offset: Vec3 = self.u * rd.x() + self.v * rd.y();
-
-        return Ray::new(self.origin + offset, self.lower_left_corner + self.horizontal * s + self.vertical * t - self.origin - offset)
-    }
-
 }
 
 pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
