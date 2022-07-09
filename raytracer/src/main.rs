@@ -1,6 +1,5 @@
 #![allow(clippy::float_cmp)]
 #![feature(box_syntax)]
-
 mod material;
 mod scene;
 mod vec3;
@@ -10,6 +9,7 @@ mod ray;
 mod moving_sphere;
 mod bvh;
 mod texture;
+mod perlin;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
@@ -349,6 +349,13 @@ fn main() {
 //     return world
 // }
 
+fn two_spheres() -> scene::hittable_list {
+    let checker = Rc::new(texture::checker_texture::new_with_para(&Vec3::new(0.2,0.3,0.1), &Vec3::new(0.9,0.9,0.9)));
+    let mut objects = scene::hittable_list::new(Rc::new(scene::Sphere::new(point3::new(0.0,-10.0,0.0), 10.0, Rc::new(material::lambertian::new_with_ptr(checker.clone())))));
+    objects.add(Rc::new(scene::Sphere::new(point3::new(0.0,10.0,0.0), 10.0, Rc::new(material::lambertian::new_with_ptr(checker.clone())))));
+    objects
+}
+
 fn random_scene() -> scene::hittable_list {
     //let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
     //let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
@@ -400,6 +407,7 @@ fn random_scene() -> scene::hittable_list {
     return world
 }
 
+
 fn main() {
     //Image
     // Book1: Final Scene
@@ -411,16 +419,32 @@ fn main() {
     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
     let image_width: i32 = 400;
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    let samples_per_pixel: i32 = 50;
-
-    let world = random_scene();
-
-    // camera
-    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
-    let lookat = Vec3::new(0.0, 0.0, 0.0);
+    let samples_per_pixel: i32 = 100;
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let mut vfov = 40.0;
+    let mut aperture = 0.0;
+
+    let mut world = scene::hittable_list::new_without_para();
+
+    let option = 2;    //option: 场景选择
+    let mut lookfrom = Vec3::zero();
+    let mut lookat = Vec3::zero();
+
+    if option == 1 {
+        world = random_scene();
+        lookfrom = Vec3::new(13.0, 2.0, 3.0);
+        lookat = Vec3::new(0.0, 0.0, 0.0);
+        vfov = 20.0;
+        aperture = 0.1
+    }
+    if option == 2 {
+        world = two_spheres();
+        lookfrom = Vec3::new(13.0,2.0,3.0);
+        lookat = Vec3::zero();
+        vfov = 20.0;
+    }
+
     let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     //视口左下角的坐标
