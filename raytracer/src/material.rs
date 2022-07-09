@@ -4,6 +4,8 @@ use crate::scene;
 use crate::Vec3;
 use crate::rtweekend;
 use crate::ray;
+use crate::texture;
+use std::rc::Rc;
 // You SHOULD remove above line in your code.
 
 // This file shows necessary examples of how to complete Track 4 and 5.
@@ -72,13 +74,18 @@ pub trait Material {
 //也可以不衰减地散射但需要吸收 1 − R 部分的光线
 //或者可以混合使用这些策略
 pub struct lambertian {
-    albedo: Vec3,
+    albedo: Rc<dyn texture::texture>,
 }
 
 impl lambertian {
     pub fn new(a: &Vec3) -> Self {
         Self {
-            albedo: Vec3::new(a.x(),a.y(),a.z()),
+            albedo: Rc::new(texture::solid_color::new_with_para(a)),
+        }
+    }
+    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+        Self {
+            albedo: a,
         }
     }
 }
@@ -91,11 +98,8 @@ impl Material for lambertian {
         scattered.orig = rec.p;
         scattered.dir = scatter_direction;
         scattered.tm = r_in.time();
-        //attenuation = &mut self.albedo;
-        *attenuation = self.albedo.clone();
-        // attenuation.x = self.albedo.x();
-        // attenuation.y = self.albedo.y();
-        // attenuation.z = self.albedo.z();
+        //*attenuation = self.albedo.clone();
+        *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
         return true
     }
 }

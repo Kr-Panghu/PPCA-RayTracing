@@ -63,6 +63,19 @@ impl Sphere {
     pub fn new(center: point3, radius: f64, material: Rc<dyn material::Material>) -> Self{
         Self {center, radius, material}
     }
+
+    pub fn get_sphere_uv(p: &point3, u: &mut f64, v: &mut f64) {
+            // p: a given point on the sphere of radius one, centered at the origin.
+            // u: returned value [0,1] of angle around the Y axis from X=-1.
+            // v: returned value [0,1] of angle from Y=-1 to Y=+1.
+            //     <1 0 0> yields <0.50 0.50>       <-1  0  0> yields <0.00 0.50>
+            //     <0 1 0> yields <0.50 1.00>       < 0 -1  0> yields <0.50 0.00>
+            //     <0 0 1> yields <0.25 0.50>       < 0  0 -1> yields <0.75 0.50>
+            let theta = f64::acos(-p.y());
+            let phi = f64::atan2(-p.z(), p.x()) + pi;
+            *u = phi/(2.0*pi);
+            *v = theta/pi;
+    }
 }
 
 // pub fn example_scene() -> World {
@@ -97,7 +110,7 @@ pub fn hit_sphere(center: Vec3, radius: f64, r: &ray::Ray) -> f64{
 // pub fn ray_color(r: &Ray, world: &hittable) -> Vec3 {
 //     let mut rec = hit_record::new();
 //     if world.hit(r, 0.0, infinity, &mut rec) {
-//         let target = rec.p + rec.normal + random_in_unit_sphere();
+//         let target = rec.œp + rec.normal + random_in_unit_sphere();
 //         return (rec.normal + Vec3::ones()) * 0.5
 //     }
 //     let unit_direction: Vec3 = r.direction().unit();
@@ -110,6 +123,8 @@ pub struct hit_record {
     pub p: point3,        //交点
     pub normal: Vec3,     //法向量
     pub t: f64,           //距离
+    pub u: f64,           //u坐标
+    pub v: f64,           //v坐标
     pub front_face: bool, //始终使得法线的方向与射线的方向相反
     pub mat_ptr: Rc<dyn material::Material>,
 }
@@ -120,6 +135,8 @@ impl hit_record {
             p: Vec3::zero(),
             normal: Vec3::zero(),
             t: 0.0,
+            u: 0.0,
+            v: 0.0,
             front_face: true,
             mat_ptr: Rc::new(material::lambertian::new(&Vec3::ones())),
         }
@@ -165,6 +182,7 @@ impl hittable for Sphere {
         rec.p = r.at(rec.t);
         let outward_normal: Vec3 = (rec.p - self.center) / self.radius;
         rec.set_face_normal(r, &outward_normal);
+        Sphere::get_sphere_uv(&outward_normal, &mut rec.u, &mut rec.v);
         rec.mat_ptr = Rc::clone(&self.material);
         return true
     }
@@ -179,7 +197,7 @@ impl hittable for Sphere {
 
 //可命中对象列表
 pub struct hittable_list {
-    objects: Vec< Rc<dyn hittable> >,
+    pub objects: Vec< Rc<dyn hittable> >,
 }
 
 impl hittable_list {

@@ -9,6 +9,7 @@ mod camera;
 mod ray;
 mod moving_sphere;
 mod bvh;
+mod texture;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
@@ -349,8 +350,11 @@ fn main() {
 // }
 
 fn random_scene() -> scene::hittable_list {
-    let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
-    let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
+    //let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
+    //let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
+
+    let checker = Rc::new(texture::checker_texture::new_with_para(&color::new(0.2,0.3,0.1), &color::new(0.9,0.9,0.9)));
+    let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(point3::new(0.0,-1000.0,0.0), 1000.0, Rc::new(material::lambertian::new_with_ptr(checker)))));
 
     for a in (-11)..12 {
         for b in (-11)..12 {
@@ -405,9 +409,9 @@ fn main() {
     // let samples_per_pixel: i32 = 500;
 
     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
-    let image_width: i32 = 200;
+    let image_width: i32 = 400;
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    let samples_per_pixel: i32 = 100;
+    let samples_per_pixel: i32 = 50;
 
     let world = random_scene();
 
