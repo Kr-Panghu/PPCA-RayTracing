@@ -83,8 +83,7 @@ impl Vec3 {
     pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
         let cos_theta = f64::min(Vec3::dot(&(-*uv), n), 1.0);
         let r_out_perp = (*uv + (*n) * cos_theta) * etai_over_etat;
-        let mut tmp = 1.0 - r_out_perp.squared_length();
-        if tmp < 0.0 {tmp = -tmp;}
+        let tmp = f64::abs(1.0 - r_out_perp.squared_length());
         let r_out_parallel = - (*n) * f64::sqrt(tmp);
         return r_out_perp + r_out_parallel
     }
@@ -98,9 +97,9 @@ impl Vec3 {
 
     pub fn near_zero(&self) -> bool {
         let s: f64 = 0.00000001;
-        let mut x1 = self.x; if x1 < 0.0 {x1 = -x1;}
-        let mut x2 = self.y; if x2 < 0.0 {x2 = -x2;}
-        let mut x3 = self.z; if x3 < 0.0 {x3 = -x3;}
+        let x1 = f64::abs(self.x);
+        let x2 = f64::abs(self.y);
+        let x3 = f64::abs(self.z);
         return x1 < s && x2 < s && x3 < s
     }
     pub fn random_in_unit_disk() -> Vec3 {

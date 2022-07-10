@@ -37,6 +37,7 @@ pub fn random_in_unit_sphere() -> Vec3 { //"拒绝算法"在球中产生随机�
 
 pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 { //半球
     let in_unit_sphere = random_in_unit_sphere();
+    
     if Vec3::dot(&in_unit_sphere, normal) > 0.0 
         { return in_unit_sphere }
     return -in_unit_sphere

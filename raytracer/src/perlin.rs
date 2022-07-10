@@ -102,8 +102,7 @@ impl Perlin {
             *temp_p *= 2.0;
         }
 
-        if accum > 0.0 {return accum}
-        else {return -accum}
+        return f64::abs(accum)
     }
 }
 

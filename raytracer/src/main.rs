@@ -419,6 +419,8 @@ fn random_scene() -> scene::hittable_list {
 
 
 
+
+
 fn main() {
     //Image
     // Book1: Final Scene
@@ -489,18 +491,27 @@ fn main() {
     }
     let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);
     render_text(&mut result, msg.as_str());
-    //result.save("output/test.png").unwrap();
+    result.save("output/test.png").unwrap();
 }
 
 
 
 
+
 //测试
+
+
 // fn main() {
 //     // for i in 1..256 {
-//     //     println!("{}", rtweekend::random_int(0, i))
+//     //     println!("{} = {}", i, rtweekend::random_int(0, i))
 //     // }
 //     // for i in 0..256 {
 //     //     println!("{}", rtweekend::random_double_1());
 //     // }
+//     if !true {
+//         println!("hahaha")
+//     }
+//     if true {
+//         println!("damn")
+//     }
 // }

@@ -215,7 +215,7 @@ pub struct hittable_list {
 impl hittable_list {
     pub fn new_without_para() -> Self {
         Self {
-            objects: vec![],
+            objects: Vec::new(),
         }
     }
     pub fn new(object: Rc<dyn hittable>) -> Self {

@@ -14,7 +14,7 @@ pub struct bvh_node {
 }
 
 //归并排序, 函数作为参量
-pub fn merge_sort(nums: &mut Vec<Rc<dyn scene::hittable> >, cmp: fn(Rc<dyn scene::hittable>,Rc<dyn scene::hittable>)->bool) {
+pub fn merge_sort(nums: &mut Vec<Rc<dyn scene::hittable> >, start: usize, end: usize, cmp: fn(Rc<dyn scene::hittable>,Rc<dyn scene::hittable>)->bool) {
 
     fn _merge(nums: &mut Vec<Rc<dyn scene::hittable> >, left: usize, mid: usize, right: usize, cmp: fn(Rc<dyn scene::hittable>,Rc<dyn scene::hittable>)->bool) {
         let left_part: Vec<Rc<dyn scene::hittable> > = nums[left..mid].iter().cloned().collect();
@@ -40,13 +40,13 @@ pub fn merge_sort(nums: &mut Vec<Rc<dyn scene::hittable> >, cmp: fn(Rc<dyn scene
         }
     }
 
-    _merge_sort(nums, 0, nums.len(), cmp)
+    _merge_sort(nums, start, start+end, cmp)
 }
 
 pub fn box_compare(a: Rc<dyn scene::hittable>, b: Rc<dyn scene::hittable>, axis: usize) -> bool {
     let mut box_a = aabb::new();
     let mut box_b = aabb::new();
-    if a.bounding_box(0.0, 0.0, &mut box_a) == false || b.bounding_box(0.0, 0.0, &mut box_b) == false {
+    if !a.bounding_box(0.0, 0.0, &mut box_a) || !b.bounding_box(0.0, 0.0, &mut box_b) {
         print!("No bounding box in bvh_node constructor.\n");
     }
     if axis == 0 {return box_a.min().x() < box_b.min().x()}
@@ -95,7 +95,7 @@ impl bvh_node {
             }
         }
         else { //object_span == 3
-            merge_sort(src_objects, comparator);
+            merge_sort(src_objects, start, end, comparator);
             let mid = start + object_span / 2;
             _left = Rc::new(bvh_node::new_with_5para(&mut objects, start, mid, time_0, time_1));
             _right = Rc::new(bvh_node::new_with_5para(&mut objects, mid, end, time_0, time_1));
@@ -104,13 +104,13 @@ impl bvh_node {
         let mut box_left = aabb::new();
         let mut box_right = aabb::new();
 
-        if _left.bounding_box(time_0, time_1, &mut box_left)
-            || _right.bounding_box(time_0, time_1, &mut box_right)
+        if !_left.bounding_box(time_0, time_1, &mut box_left)
+            || !_right.bounding_box(time_0, time_1, &mut box_right)
         {print!("No bounding box in bvh_node constructor.\n");}
         
         Self {
-            left: _left,
-            right: _right,
+            left: Rc::clone(&_left), //clone() ?
+            right: Rc::clone(&_right),
             Box: aabb::surrounding_box(box_left, box_right),
         }
     }
