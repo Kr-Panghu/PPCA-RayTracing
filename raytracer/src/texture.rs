@@ -105,6 +105,13 @@ impl noise_texture {
 
 impl texture for noise_texture {
     fn value(&self, u: f64, v: f64, p: &point3) -> color {
-        return Vec3::ones() * self.noise.noise(&(*p * self.scale))
+        //return Vec3::ones() * 0.5 * (1.0 + self.noise.noise(&(*p * self.scale)))
+
+        //引入湍流
+        //return Vec3::ones() * self.noise.turb(&mut(*p * self.scale));
+
+        //使颜色与正弦函数之类的东西成比例，并使用湍流来调整相位
+        //使条纹呈波动状
+        return Vec3::ones() * 0.5 * (1.0 + f64::sin(self.scale*p.z() + 10.0 * self.noise.turb(&mut(*p * 1.0))))
     }
 }

@@ -7,10 +7,13 @@ type point3 = Vec3;
 pub const point_count: usize = 256;
 
 pub struct Perlin { //柏林噪声
-    ranfloat: Vec<f64>, //*mut 原生指针
+    //ranfloat: Vec<f64>, //*mut 原生指针
     perm_x: Vec<i64>,
     perm_y: Vec<i64>,
     perm_z: Vec<i64>,
+    ranvec: Vec<Vec3>,
+    //把随机浮点数更改为随机向量
+    //这些向量是任何合理的不规则方向集 
 }
 
 pub fn permute(p: &mut Vec<i64>, n: i64) { // mut p
@@ -34,13 +37,13 @@ pub fn perlin_generate_perm() -> Vec<i64> {
 
 impl Perlin {
     pub fn new() -> Self {
-        let mut _ranfloat: Vec<f64> = Vec::with_capacity(256);
+        let mut _ranvec: Vec<Vec3> = Vec::with_capacity(256);
         for i in 0..256 {
-            _ranfloat.push(rtweekend::random_double_1());
+            _ranvec.push(Vec3::random_vector_2(-1.0,1.0).unit());
             //_ranfloat[i as usize] = rtweekend::random_double_1();
         }
         Self {
-            ranfloat: _ranfloat.clone(),
+            ranvec: _ranvec.clone(),
             perm_x: perlin_generate_perm(),
             perm_y: perlin_generate_perm(),
             perm_z: perlin_generate_perm(),
@@ -66,13 +69,13 @@ impl Perlin {
         // [4, 5, 8, 3],
         // [5, 8, 9, 2]];
 
-        let mut c: [[[f64; 2];2];2] = [ [[0.0,0.0],[0.0,0.0]],
-                                        [[0.0,0.0],[0.0,0.0]] ];
+        let mut c: [[[Vec3; 2];2];2] = [ [[Vec3::zero(),Vec3::zero()],[Vec3::zero(),Vec3::zero()]],
+                                        [[Vec3::zero(),Vec3::zero()],[Vec3::zero(),Vec3::zero()]] ];
 
         for di in 0..2 {     //三线性插值:使平滑
             for dj in 0..2 {
                 for dk in 0..2 {
-                    c[di][dj][dk] = self.ranfloat[(
+                    c[di][dj][dk] = self.ranvec[(
                         self.perm_x[(i+di) & 255] ^ 
                         self.perm_y[(j+dj) & 255] ^ 
                         self.perm_z[(k+dk) & 255]
@@ -80,8 +83,27 @@ impl Perlin {
                 }
             }
         }
-        return trilinear_interp(c, u, v, w)
+        //return trilinear_interp(c, u, v, w)
+        return perlin_interp(c, u, v, w)
         //return self.ranfloat[self.perm_x[i] as usize ^ self.perm_y[j] as usize ^ self.perm_z[k] as usize]
+    }
+
+    //湍流:使用具有多个求和频率的复合噪声
+    //重复调用噪声的总和
+    pub fn turb(&self, p: &mut point3) -> f64 {
+        let depth = 7;
+        let mut accum = 0.0;
+        let mut temp_p = p;
+        let mut weight = 1.0;
+
+        for i in 0..depth {
+            accum += weight*self.noise(temp_p);
+            weight *= 0.5;
+            *temp_p *= 2.0;
+        }
+
+        if accum > 0.0 {return accum}
+        else {return -accum}
     }
 }
 
@@ -94,6 +116,26 @@ pub fn trilinear_interp(c: [[[f64; 2];2];2], u: f64, v:f64, w: f64) -> f64 {
                         *(j as f64*v + (1.0-j as f64) * (1.0-v))
                         *(k as f64*w + (1.0-k as f64) * (1.0-w))
                         *c[i][j][k];
+            }
+        }
+    }
+    return accum
+}
+
+pub fn perlin_interp(c: [[[Vec3; 2];2];2], u: f64, v: f64, w: f64) -> f64 {
+    let uu = u*u*(3.0-2.0*u);
+    let vv = v*v*(3.0-2.0*v);
+    let ww = w*w*(3.0-2.0*w);
+    let mut accum: f64 = 0.0;
+
+    for i in 0..2 {
+        for j in 0..2 {
+            for k in 0..2 {
+                let weight_v = Vec3::new(u-i as f64,v-j as f64,w-k as f64);
+                accum += (i as f64*uu + (1-i)as f64*(1.0-uu))
+                        *(j as f64*vv + (1-j)as f64*(1.0-vv))
+                        *(k as f64*ww + (1-k)as f64*(1.0-ww))
+                        *Vec3::dot(&c[i][j][k], &weight_v);
             }
         }
     }
