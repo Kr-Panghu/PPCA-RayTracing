@@ -76,6 +76,16 @@ impl Sphere {
             *u = phi/(2.0*pi);
             *v = theta/pi;
     }
+    pub fn get_sphere_u(p: &point3) -> f64 {
+        let theta = f64::acos(-p.y());
+        let phi = f64::atan2(-p.z(), p.x()) + pi;
+        return phi/(2.0*pi);
+    }
+    pub fn get_sphere_v(p: &point3) -> f64 {
+        let theta = f64::acos(-p.y());
+        let phi = f64::atan2(-p.z(), p.x()) + pi;
+        return theta / pi;
+    }
 }
 
 // pub fn example_scene() -> World {
@@ -183,6 +193,8 @@ impl hittable for Sphere {
         let outward_normal: Vec3 = (rec.p - self.center) / self.radius;
         rec.set_face_normal(r, &outward_normal);
         Sphere::get_sphere_uv(&outward_normal, &mut rec.u, &mut rec.v);
+        rec.u = Sphere::get_sphere_u(&outward_normal);
+        rec.v = Sphere::get_sphere_v(&outward_normal);
         rec.mat_ptr = Rc::clone(&self.material);
         return true
     }

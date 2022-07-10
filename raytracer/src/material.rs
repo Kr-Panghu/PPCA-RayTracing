@@ -17,7 +17,9 @@ pub trait Material {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
-    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
+    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool{
+        return true
+    }
 }
 
 /// `Lambertian` now takes a generic parameter `T`.

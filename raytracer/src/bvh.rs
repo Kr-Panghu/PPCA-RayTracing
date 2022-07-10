@@ -156,8 +156,8 @@ pub struct aabb {
 impl aabb {
     pub fn new() -> Self {
         Self {
-            minimum: Vec3::new(0.0,0.0,0.0),
-            maximum: Vec3::new(0.0,0.0,0.0),
+            minimum: Vec3::zero(),
+            maximum: Vec3::zero(),
         }
     }
     pub fn new_with_para(a: &point3, b: &point3) -> Self {

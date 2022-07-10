@@ -357,11 +357,11 @@ fn two_spheres() -> scene::hittable_list {
 }
 
 fn two_perlin_spheres() -> scene::hittable_list {
-    let pertext = Rc::new(texture::noise_texture::new());
-    let a = Rc::new(material::lambertian::new_with_ptr(pertext));
-    let b = a.clone();
+    let pertext = Rc::new(texture::noise_texture::new_with_para(4.0));
+    let a = Rc::new(material::lambertian::new_with_ptr(pertext.clone()));
+    let b = Rc::clone(&a);
     let mut objects = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, a)));
-    objects.add(Rc::new(scene::Sphere::new(point3::new(0.0, 2.0, 0.0), 2.0, b)));
+    objects.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, 2.0, 0.0), 2.0, b)));
     objects
 }
 
@@ -417,7 +417,7 @@ fn random_scene() -> scene::hittable_list {
 }
 
 
-/*
+
 
 fn main() {
     //Image
@@ -430,7 +430,7 @@ fn main() {
     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
     let image_width: i32 = 400;
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    let samples_per_pixel: i32 = 100;
+    let samples_per_pixel: i32 = 50;
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
     let mut vfov = 40.0;
@@ -493,14 +493,14 @@ fn main() {
 }
 
 
-*/
+
 
 //测试
-fn main() {
-    // for i in 1..256 {
-    //     println!("{}", rtweekend::random_int(0, i))
-    // }
-    // for i in 0..256 {
-    //     println!("{}", rtweekend::random_double_1());
-    // }
-}
+// fn main() {
+//     // for i in 1..256 {
+//     //     println!("{}", rtweekend::random_int(0, i))
+//     // }
+//     // for i in 0..256 {
+//     //     println!("{}", rtweekend::random_double_1());
+//     // }
+// }

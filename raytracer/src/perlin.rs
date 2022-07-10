@@ -48,9 +48,54 @@ impl Perlin {
     }
 
     pub fn noise(&self, p: &point3) -> f64 {
-        let i = (4.0*p.x()) as usize & 255;
-        let j = (4.0*p.y()) as usize & 255;
-        let k = (4.0*p.z()) as usize & 255;
-        return self.ranfloat[self.perm_x[i] as usize ^ self.perm_y[j] as usize ^ self.perm_z[k] as usize]
+        let mut u = p.x() - f64::floor(p.x());
+        let mut v = p.y() - f64::floor(p.y());
+        let mut w = p.z() - f64::floor(p.z());
+        u = u*u*(3.0-2.0*u);    //Hermitian厄米平滑改进
+        v = v*v*(3.0-2.0*v);
+        w = w*w*(3.0-2.0*w);
+
+        // let i = (4.0*p.x()) as usize & 255;
+        // let j = (4.0*p.y()) as usize & 255;
+        // let k = (4.0*p.z()) as usize & 255;
+        let i = f64::floor(p.x()) as usize;
+        let j = f64::floor(p.y()) as usize;
+        let k = f64::floor(p.z()) as usize;
+        // let mut arr: [[i32; 4]; 4] = [[2, 4, 6, 8],
+        // [1, 2, 3, 5],
+        // [4, 5, 8, 3],
+        // [5, 8, 9, 2]];
+
+        let mut c: [[[f64; 2];2];2] = [ [[0.0,0.0],[0.0,0.0]],
+                                        [[0.0,0.0],[0.0,0.0]] ];
+
+        for di in 0..2 {     //三线性插值:使平滑
+            for dj in 0..2 {
+                for dk in 0..2 {
+                    c[di][dj][dk] = self.ranfloat[(
+                        self.perm_x[(i+di) & 255] ^ 
+                        self.perm_y[(j+dj) & 255] ^ 
+                        self.perm_z[(k+dk) & 255]
+                    ) as usize];
+                }
+            }
+        }
+        return trilinear_interp(c, u, v, w)
+        //return self.ranfloat[self.perm_x[i] as usize ^ self.perm_y[j] as usize ^ self.perm_z[k] as usize]
     }
+}
+
+pub fn trilinear_interp(c: [[[f64; 2];2];2], u: f64, v:f64, w: f64) -> f64 {
+    let mut accum: f64 = 0.0;
+    for i in 0..2 {
+        for j in 0..2 {
+            for k in 0..2 {
+                accum += (i as f64*u + (1.0-i as f64) * (1.0-u))
+                        *(j as f64*v + (1.0-j as f64) * (1.0-v))
+                        *(k as f64*w + (1.0-k as f64) * (1.0-w))
+                        *c[i][j][k];
+            }
+        }
+    }
+    return accum
 }

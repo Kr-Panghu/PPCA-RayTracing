@@ -23,7 +23,7 @@ pub struct solid_color {
 
 impl solid_color {
     pub fn new() -> Self {
-        Self {color_value: Vec3::zero(),}
+        Self {color_value: Vec3::ones(),}
     }
     pub fn new_with_para(c: &color) -> Self {
         Self {color_value: *c,}
@@ -58,8 +58,8 @@ impl checker_texture {
     }
     pub fn new_with_ptr(_even: Rc<dyn texture>, _odd: Rc<dyn texture>) -> Self {
         Self {
-            even: _even.clone(),
-            odd: _odd.clone(),
+            even: Rc::clone(&_even),
+            odd: Rc::clone(&_odd),
         }
     }
     pub fn new_with_para(c1: &color, c2: &color) -> Self {
@@ -82,20 +82,29 @@ impl texture for checker_texture {
     }
 }
 
+//噪音纹理
 pub struct noise_texture {
-    noise: perlin::Perlin
+    noise: perlin::Perlin,
+    scale: f64,
 }
 
 impl noise_texture {
     pub fn new() -> Self {
         Self {
-            noise: perlin::Perlin::new()
+            noise: perlin::Perlin::new(),
+            scale: 0.0,
+        }
+    }
+    pub fn new_with_para(sc: f64) -> Self{
+        Self {
+            noise: perlin::Perlin::new(),
+            scale: sc,
         }
     }
 }
 
 impl texture for noise_texture {
     fn value(&self, u: f64, v: f64, p: &point3) -> color {
-        return Vec3::ones() * self.noise.noise(p)
+        return Vec3::ones() * self.noise.noise(&(*p * self.scale))
     }
 }
