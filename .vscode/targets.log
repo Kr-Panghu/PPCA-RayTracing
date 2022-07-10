@@ -6,11 +6,8 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # PARTICULAR PURPOSE.
 
 # This program built for i386-apple-darwin11.3.0
- 
-make: *** No rule to make target `all'.  Stop.
 
-
-# Make data base, printed on Sat Jul  9 23:39:23 2022
+# Make data base, printed on Sun Jul 10 15:19:59 2022
 
 # Variables
 
@@ -27,7 +24,7 @@ VSCODE_LOG_NATIVE = false
 # automatic
 @F = $(notdir $@)
 # makefile
-CURDIR := /Users/kr/Desktop/PPCA-RayTracing_template
+CURDIR := /Users/kr/Desktop/Debug
 # makefile
 SHELL = /bin/sh
 # environment
@@ -41,7 +38,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 __CFBundleIdentifier = com.microsoft.VSCode
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /var/folders/w8/0bz50j655wq64tz4_03w95qc0000gn/T/vscode-ipc-3aeff345-4c3f-4e18-af84-b584e905f186.sock
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/w8/0bz50j655wq64tz4_03w95qc0000gn/T/vscode-ipc-0d6cae82-3066-4ce0-9c33-28ab78a1e977.sock
 # environment
 VSCODE_CWD = /
 # environment
@@ -61,7 +58,7 @@ SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.R3SivgAQ1s/Listeners
 # environment
 VSCODE_PIPE_LOGGING = true
 # environment
-PWD = /Users/kr/Desktop/PPCA-RayTracing_template
+PWD = /Users/kr/Desktop/Debug
 # environment
 ORIGINAL_XDG_CURRENT_DESKTOP = undefined
 # environment
@@ -149,9 +146,9 @@ VSCODE_PID = 601
 
 # Directories
 
-# . (device 16777234, inode 41758124): 19 files, no impossibilities.
+# . (device 16777234, inode 42898044): 21 files, no impossibilities.
 
-# 19 files, no impossibilities in 1 directories.
+# 21 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -265,6 +262,8 @@ fmt:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Sat Jul  9 23:39:23 2022
+# Finished Make data base on Sun Jul 10 15:19:59 2022
 
  
+make: *** No rule to make target `all'.  Stop.
+

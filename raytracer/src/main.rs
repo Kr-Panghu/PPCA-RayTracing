@@ -356,6 +356,15 @@ fn two_spheres() -> scene::hittable_list {
     objects
 }
 
+fn two_perlin_spheres() -> scene::hittable_list {
+    let pertext = Rc::new(texture::noise_texture::new());
+    let a = Rc::new(material::lambertian::new_with_ptr(pertext));
+    let b = a.clone();
+    let mut objects = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, a)));
+    objects.add(Rc::new(scene::Sphere::new(point3::new(0.0, 2.0, 0.0), 2.0, b)));
+    objects
+}
+
 fn random_scene() -> scene::hittable_list {
     //let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
     //let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
@@ -408,13 +417,15 @@ fn random_scene() -> scene::hittable_list {
 }
 
 
+/*
+
 fn main() {
     //Image
     // Book1: Final Scene
     // let aspect_ratio: f64 = 3.0 / 2.0; //纵横比
     // let image_width: i32 = 1200;
     // let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    // let samples_per_pixel: i32 = 500;
+    // let samples_per_pixel: i32 = 200;
 
     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
     let image_width: i32 = 400;
@@ -427,7 +438,7 @@ fn main() {
 
     let mut world = scene::hittable_list::new_without_para();
 
-    let option = 2;    //option: 场景选择
+    let option = 3;    //option: 场景选择
     let mut lookfrom = Vec3::zero();
     let mut lookat = Vec3::zero();
 
@@ -444,8 +455,14 @@ fn main() {
         lookat = Vec3::zero();
         vfov = 20.0;
     }
+    if option == 3 {
+        world = two_perlin_spheres();
+        lookfrom = Vec3::new(13.0,2.0,3.0);
+        lookat = Vec3::zero();
+        vfov = 20.0;
+    }
 
-    let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+    let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     //视口左下角的坐标
     //let lower_left_corner: Vec3 = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
@@ -475,3 +492,15 @@ fn main() {
     //result.save("output/test.png").unwrap();
 }
 
+
+*/
+
+//测试
+fn main() {
+    // for i in 1..256 {
+    //     println!("{}", rtweekend::random_int(0, i))
+    // }
+    // for i in 0..256 {
+    //     println!("{}", rtweekend::random_double_1());
+    // }
+}

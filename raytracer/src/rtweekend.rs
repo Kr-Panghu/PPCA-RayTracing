@@ -2,6 +2,7 @@
 use crate::scene;
 use crate::Vec3;
 use rand::Rng;
+use rand::prelude::ThreadRng;
 pub const infinity: f64 = std::f64::INFINITY;
 pub const pi: f64 = 3.1415926535897932385;
 
@@ -50,8 +51,10 @@ impl Vec3 {
     }
 }
 
-pub fn random_int(min: i32, max: i32) -> i32{
+pub fn random_int(min: i64, max: i64) -> i64{
     //返回[min, max]中的整数
     //round函数返回距离最近的整数
-    return random_double_2(min as f64 - 0.5, max as f64 + 0.4999).round() as i32;
+    let mut random: ThreadRng = rand::thread_rng();
+    return random.gen_range(min..=max);
+    //return random_double_2(min as f64 - 0.5, max as f64 + 0.4999).round() as i64;
 }

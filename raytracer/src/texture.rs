@@ -3,6 +3,7 @@ use crate::material;
 use crate::scene;
 use crate::rtweekend;
 use crate::ray;
+use crate::perlin;
 use std::rc::Rc;
 
 type color = Vec3;
@@ -78,5 +79,23 @@ impl texture for checker_texture {
         else {
             return self.even.value(u,v,p);
         }
+    }
+}
+
+pub struct noise_texture {
+    noise: perlin::Perlin
+}
+
+impl noise_texture {
+    pub fn new() -> Self {
+        Self {
+            noise: perlin::Perlin::new()
+        }
+    }
+}
+
+impl texture for noise_texture {
+    fn value(&self, u: f64, v: f64, p: &point3) -> color {
+        return Vec3::ones() * self.noise.noise(p)
     }
 }
