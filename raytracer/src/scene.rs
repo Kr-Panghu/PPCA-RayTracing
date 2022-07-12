@@ -140,6 +140,9 @@ pub struct hit_record {
 }
 
 impl hit_record {
+    pub fn print(&self) {
+        println!("{:?}\n{:?}\n{} {} {} {}", self.p, self.normal, self.t, self.u, self.v, self.front_face);
+    }
     pub fn new() -> Self { //默认构造函数
         Self {
             p: Vec3::zero(),
@@ -147,31 +150,31 @@ impl hit_record {
             t: 0.0,
             u: 0.0,
             v: 0.0,
-            front_face: true,
+            front_face: false,
             mat_ptr: Rc::new(material::lambertian::new(&Vec3::ones())),
         }
     }
 
-    pub fn set_face_normal(&mut self, r: &ray::Ray, outward_normal: &Vec3) {
-        self.front_face = Vec3::dot(r.direction(), outward_normal) < 0.0;
-        if self.front_face {self.normal = *outward_normal;}
-        else {self.normal = -(*outward_normal)}
-    }
+    pub fn set_face_normal(&mut self, r: &ray::Ray, outward_normal: &mut Vec3) {
+        self.front_face = Vec3::dot(r.direction(), &(*outward_normal).clone()) < 0.0;
+        if self.front_face {self.normal = (*outward_normal).clone();}
+        else {self.normal = -(*outward_normal).clone()}
+    }//////////////////
 }
 
 //设计一个hittable的trait,并限定t的范围
 //当t_min<t<t_max时才认为有交点
 pub trait hittable {
-    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
-        true
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+        false
     }
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
-        true
+        false
     }
 }
 
 impl hittable for Sphere {
-    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         let oc: Vec3 = *r.origin() - self.center;
         let a: f64 = r.direction().squared_length();
         let half_b: f64 = Vec3::dot(r.direction(), &oc);
@@ -190,8 +193,8 @@ impl hittable for Sphere {
         }
         rec.t = root;
         rec.p = r.at(rec.t);
-        let outward_normal: Vec3 = (rec.p - self.center) / self.radius;
-        rec.set_face_normal(r, &outward_normal);
+        let mut outward_normal: Vec3 = (rec.p - self.center) / self.radius;
+        rec.set_face_normal(r, &mut outward_normal);
         Sphere::get_sphere_uv(&outward_normal, &mut rec.u, &mut rec.v);
         rec.u = Sphere::get_sphere_u(&outward_normal);
         rec.v = Sphere::get_sphere_v(&outward_normal);
@@ -232,7 +235,7 @@ impl hittable_list {
 }
 
 impl hittable for hittable_list {
-    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, mut rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         //let mut temp_rec = hit_record::new();
         let temp_rec = &mut hit_record::new();
         let mut hit_anything = false;

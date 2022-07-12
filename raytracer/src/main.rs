@@ -10,6 +10,7 @@ mod moving_sphere;
 mod bvh;
 mod texture;
 mod perlin;
+mod aarect;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
@@ -82,25 +83,45 @@ fn render_text(image: &mut RgbImage, msg: &str) {
 const max_depth: i32 = 50; //限制递归深度
 
 //光线: 渐变色
-pub fn ray_color(r: &ray::Ray, world: &dyn scene::hittable, depth: i32) -> Vec3 {
+pub fn ray_color(r: &mut ray::Ray, background: &mut color, world: &mut dyn scene::hittable, depth: i32) -> Vec3 {
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
-    if world.hit(r, 0.001, infinity, &mut rec) {
-        let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
-        let mut attenuation = Vec3::zero();
-        //let target = rec.p + rtweekend::random_in_hemisphere(&rec.normal);
-        if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
-            // print!("Debug atten     : {} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
-            // print!("Debug scatt.orig: {} {} {}\n", scattered.orig.x(), scattered.orig.y(), scattered.orig.z());
-            // print!("Debug scatt.dir : {} {} {}\n", scattered.dir.x(), scattered.dir.y(), scattered.dir.z());
-            return Vec3::cdot(&attenuation, &ray_color(&scattered, world, depth - 1))
-        }
-        //return ray_color(&scene::Ray::new(rec.p, target - rec.p), world, depth - 1) * 0.5
-        return Vec3::zero()
+
+    if world.hit(r, 0.001, infinity, &mut rec) == false {
+        return *background     //background.clone()
     }
-    let unit_direction = r.direction().unit();
-    let t = (unit_direction.y() + 1.0) * 0.5;
-    Vec3::ones() * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
+    
+    let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
+    let mut attenuation = color::zero();
+    let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &mut rec.p);
+
+    if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) == false {
+        //print!("{} {} {}\n", emitted.x(), emitted.y(), emitted.z());
+        return emitted.clone()
+    }
+    //print!("{:?}", attenuation);
+    //print!("{} {} {}      ", emitted.x(), emitted.y(), emitted.z());
+    //print!("{} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
+    return emitted.clone() + Vec3::cdot(&attenuation.clone(), &ray_color(&mut scattered, background, world, depth - 1));
+
+
+
+    // if world.hit(r, 0.001, infinity, &mut rec) {
+    //     let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
+    //     let mut attenuation = Vec3::zero();
+    //     //let target = rec.p + rtweekend::random_in_hemisphere(&rec.normal);
+    //     if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
+    //         // print!("Debug atten     : {} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
+    //         // print!("Debug scatt.orig: {} {} {}\n", scattered.orig.x(), scattered.orig.y(), scattered.orig.z());
+    //         // print!("Debug scatt.dir : {} {} {}\n", scattered.dir.x(), scattered.dir.y(), scattered.dir.z());
+    //         return Vec3::cdot(&attenuation, &ray_color(&scattered, background, world, depth - 1))
+    //     }
+    //     //return ray_color(&scene::Ray::new(rec.p, target - rec.p), world, depth - 1) * 0.5
+    //     return Vec3::zero()
+    // }
+    // let unit_direction = r.direction().unit();
+    // let t = (unit_direction.y() + 1.0) * 0.5;
+    // Vec3::ones() * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
 }
 
 
@@ -365,6 +386,19 @@ fn two_perlin_spheres() -> scene::hittable_list {
     objects
 }
 
+// fn earth() -> scene::hittable_list {}
+
+fn simple_light() -> scene::hittable_list {
+    let pertext = Rc::new(texture::noise_texture::new_with_para(4.0));
+    let a = Rc::new(material::lambertian::new_with_ptr(pertext.clone()));
+    let b = Rc::clone(&a);
+    let mut objects = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, a)));
+    objects.add(Rc::new(scene::Sphere::new(Vec3::new(0.0, 2.0, 0.0), 2.0, b)));
+    //let difflight = Rc::new(material::diffuse_light::new_with_para(color::new(4.0,4.0,4.0)));
+    //objects.add(Rc::new(aarect::xy_rect::new(difflight ,3.0, 5.0, 1.0, 3.0, -2.0)));
+    objects
+}
+
 fn random_scene() -> scene::hittable_list {
     //let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
     //let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
@@ -375,7 +409,7 @@ fn random_scene() -> scene::hittable_list {
     for a in (-11)..12 {
         for b in (-11)..12 {
             let choose_mat = rtweekend::random_double_1();
-            let center = Vec3::new(a as f64 + 0.9 * rtweekend::random_double_1(), 0.2, b as f64 + rtweekend::random_double_1());
+            let center = Vec3::new(a as f64 + 0.9 * rtweekend::random_double_1(), 0.2, b as f64 + 0.9 * rtweekend::random_double_1());
 
             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let sphere_material: Rc<dyn material::Material>;
@@ -417,7 +451,23 @@ fn random_scene() -> scene::hittable_list {
 }
 
 
+fn cornell_box() -> scene::hittable_list {
+    let red = Rc::new(material::lambertian::new(&Vec3::new(0.65,0.05,0.05)));
+    let white = Rc::new(material::lambertian::new(&Vec3::new(0.73,0.73,0.73)));
+    let green = Rc::new(material::lambertian::new(&Vec3::new(0.12,0.45,0.15)));
+    let light = Rc::new(material::diffuse_light::new_with_para(&Vec3::new(15.0,15.0,15.0)));
 
+    let mut objects = scene::hittable_list::new_without_para();
+
+    objects.add(Rc::new(aarect::yz_rect::new(green.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::yz_rect::new(red.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(light.clone(), 213.0, 343.0, 227.0, 332.0, 554.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::xy_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+
+    objects
+}
 
 
 
@@ -429,41 +479,70 @@ fn main() {
     // let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
     // let samples_per_pixel: i32 = 200;
 
-    let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
-    let image_width: i32 = 400;
-    let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
-    let samples_per_pixel: i32 = 50;
+    let mut aspect_ratio: f64 = 16.0 / 9.0; //纵横比
+    let mut image_width: i32 = 400;
+    let mut samples_per_pixel: i32 = 50;
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
     let mut vfov = 40.0;
     let mut aperture = 0.0;
+    let mut background = color::zero();
 
     let mut world = scene::hittable_list::new_without_para();
 
-    let option = 3;    //option: 场景选择
+    let option = 6;    //option: 场景选择
     let mut lookfrom = Vec3::zero();
     let mut lookat = Vec3::zero();
 
     if option == 1 {
         world = random_scene();
+        background = color::new(0.7, 0.8, 1.0);
         lookfrom = Vec3::new(13.0, 2.0, 3.0);
         lookat = Vec3::new(0.0, 0.0, 0.0);
         vfov = 20.0;
-        aperture = 0.1
+        aperture = 0.1;
     }
     if option == 2 {
         world = two_spheres();
+        background = color::new(0.7, 0.8, 1.0);
         lookfrom = Vec3::new(13.0,2.0,3.0);
         lookat = Vec3::zero();
         vfov = 20.0;
     }
     if option == 3 {
         world = two_perlin_spheres();
+        background = color::new(0.7, 0.8, 1.0);
         lookfrom = Vec3::new(13.0,2.0,3.0);
         lookat = Vec3::zero();
         vfov = 20.0;
     }
+    // if option == 4 {
+    //     world = earth();
+    //     background = color::new(0.7, 0.8, 1.0);
+    //     lookfrom = Vec3::new(13.0,100.0,3.0);
+    //     lookat = Vec3::zero();
+    //     vfov = 20.0;
+    // }
+    if option == 5 {
+        world = simple_light();
+        samples_per_pixel = 400;
+        background = color::zero();
+        lookfrom = point3::new(26.0, 3.0, 6.0);
+        lookat = point3::new(0.0, 2.0, 0.0);
+        vfov = 20.0;
+    }
+    if option == 6 {
+        world = cornell_box();
+        aspect_ratio = 1.0;
+        image_width = 600;
+        samples_per_pixel = 200;
+        background = color::new(0.0, 0.0, 0.0);
+        lookfrom = point3::new(278.0, 278.0, -800.0);
+        lookat = point3::new(278.0, 278.0, 0.0);
+        vfov = 40.0;
+    }
 
+    let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
     let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
     //视口左下角的坐标
@@ -474,19 +553,15 @@ fn main() {
 
     for j in (0..image_height).rev(){
         for i in 0..image_width {
+            //print!("{} {} :", j, i);
             let mut pixel_color = Vec3::zero();
             for s in 0..samples_per_pixel {
                 let u: f64 = (i as f64 + rtweekend::random_double_1()) / (image_width as f64 - 1.0);
                 let v: f64 = (j as f64 + rtweekend::random_double_1()) / (image_height as f64 - 1.0);
-                let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&r, &world, max_depth);
+                let mut r = cam.get_ray(u, v);
+                pixel_color += ray_color(&mut r, &mut background, &mut world, max_depth);
             }
             scene::write_color(pixel_color, samples_per_pixel);
-            // let u: f64 = (i as f64) / (image_width - 1) as f64;
-            // let v: f64 = (j as f64) / (image_height - 1) as f64;
-            // let r = scene::Ray::new(origin, lower_left_corner + horizontal * u + vertical * v - origin);
-            // let pixel_color: Vec3 = scene::ray_color(&r, &world);
-            // pixel_color.write_color();
         }
     }
     let mut result: RgbImage = ImageBuffer::new(image_width as u32, image_height as u32);

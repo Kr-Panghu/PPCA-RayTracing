@@ -125,7 +125,7 @@ impl bvh_node {
 }
 
 impl scene::hittable for bvh_node {
-    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         if self.Box.hit(r, t_min, t_max) {
             return false
         }

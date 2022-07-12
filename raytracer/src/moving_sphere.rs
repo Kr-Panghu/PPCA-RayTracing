@@ -33,7 +33,7 @@ impl moving_sphere {
 }
 
 impl scene::hittable for moving_sphere {
-    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         let oc: Vec3 = *r.origin() - self.center(r.time());
         let a: f64 = r.direction().squared_length();
         let half_b: f64 = Vec3::dot(r.direction(), &oc);
@@ -52,8 +52,8 @@ impl scene::hittable for moving_sphere {
         }
         rec.t = root;
         rec.p = r.at(rec.t);
-        let outward_normal: Vec3 = (rec.p - self.center(r.time())) / self.radius;
-        rec.set_face_normal(r, &outward_normal);
+        let mut outward_normal: Vec3 = (rec.p - self.center(r.time())) / self.radius;
+        rec.set_face_normal(r, &mut outward_normal);
         rec.mat_ptr = Rc::clone(&self.mat_ptr);
         return true
     }

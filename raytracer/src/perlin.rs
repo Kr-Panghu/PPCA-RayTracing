@@ -54,9 +54,6 @@ impl Perlin {
         let mut u = p.x() - f64::floor(p.x());
         let mut v = p.y() - f64::floor(p.y());
         let mut w = p.z() - f64::floor(p.z());
-        u = u*u*(3.0-2.0*u);    //Hermitian厄米平滑改进
-        v = v*v*(3.0-2.0*v);
-        w = w*w*(3.0-2.0*w);
 
         // let i = (4.0*p.x()) as usize & 255;
         // let j = (4.0*p.y()) as usize & 255;
@@ -84,7 +81,7 @@ impl Perlin {
             }
         }
         //return trilinear_interp(c, u, v, w)
-        return perlin_interp(c, u, v, w)
+        return perlin_interp(c.clone(), u, v, w)
         //return self.ranfloat[self.perm_x[i] as usize ^ self.perm_y[j] as usize ^ self.perm_z[k] as usize]
     }
 
@@ -122,6 +119,7 @@ pub fn trilinear_interp(c: [[[f64; 2];2];2], u: f64, v:f64, w: f64) -> f64 {
 }
 
 pub fn perlin_interp(c: [[[Vec3; 2];2];2], u: f64, v: f64, w: f64) -> f64 {
+    //Hermitian厄米平滑改进
     let uu = u*u*(3.0-2.0*u);
     let vv = v*v*(3.0-2.0*v);
     let ww = w*w*(3.0-2.0*w);
@@ -134,7 +132,7 @@ pub fn perlin_interp(c: [[[Vec3; 2];2];2], u: f64, v: f64, w: f64) -> f64 {
                 accum += (i as f64*uu + (1-i)as f64*(1.0-uu))
                         *(j as f64*vv + (1-j)as f64*(1.0-vv))
                         *(k as f64*ww + (1-k)as f64*(1.0-ww))
-                        *Vec3::dot(&c[i][j][k], &weight_v);
+                        *Vec3::dot(&c[i][j][k].clone(), &weight_v);
             }
         }
     }

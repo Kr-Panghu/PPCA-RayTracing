@@ -23,7 +23,7 @@ pub struct solid_color {
 
 impl solid_color {
     pub fn new() -> Self {
-        Self {color_value: Vec3::ones(),}
+        Self {color_value: Vec3::zero(),}
     }
     pub fn new_with_para(c: &color) -> Self {
         Self {color_value: *c,}
@@ -35,7 +35,7 @@ impl solid_color {
 
 impl texture for solid_color {
     fn value(&self, u: f64, v: f64, p: &point3) -> color {
-        return self.color_value
+        return self.color_value.clone()
     }
 }
 
@@ -108,10 +108,43 @@ impl texture for noise_texture {
         //return Vec3::ones() * 0.5 * (1.0 + self.noise.noise(&(*p * self.scale)))
 
         //引入湍流
-        return Vec3::ones() * self.noise.turb(&mut(*p * self.scale));
+        //return Vec3::ones() * self.noise.turb(&mut(*p * self.scale));
 
         //使颜色与正弦函数之类的东西成比例，并使用湍流来调整相位
         //使条纹呈波动状
-        //return Vec3::ones() * 0.5 * (1.0 + f64::sin(self.scale*p.z() + 10.0 * self.noise.turb(&mut(*p * 1.0))))
+        return Vec3::ones() * 0.5 * (1.0 + f64::sin(self.scale*p.z() + 10.0 * self.noise.turb(&mut(*p * 1.0))))
     }
 }
+
+
+
+//-------------------------------------------------------------------------------------------
+
+// const bytes_per_pixel: i64 = 3; 
+
+// pub struct image_texture {
+//     data: String,           //????????
+//     width: i64,
+//     height: i64,
+//     bytes_per_scanline: i64,
+// }
+
+// impl image_texture {
+//     pub fn new() -> Self {
+//         Self {
+//             data: String::new(),
+//             width: 0,
+//             height: 0,
+//             bytes_per_scanline: 0,
+//         }
+//     }
+//     pub fn new_with_para(filename: String) -> Self {
+//         let components_per_pixel = bytes_per_pixel;
+//         let _data = 
+        
+//         Self {
+
+//         }
+//     }
+// }
+

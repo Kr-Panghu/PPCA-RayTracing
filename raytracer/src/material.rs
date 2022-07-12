@@ -6,6 +6,7 @@ use crate::rtweekend;
 use crate::ray;
 use crate::texture;
 use std::rc::Rc;
+type color = Vec3;
 // You SHOULD remove above line in your code.
 
 // This file shows necessary examples of how to complete Track 4 and 5.
@@ -17,8 +18,9 @@ pub trait Material {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
-    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool{
-        return true
+    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
+    fn emitted(&self, u: f64, v: f64, p: &mut Vec3) -> color {
+        return Vec3::zero() //并不需要让所有材质实现emitted, 默认返回黑色
     }
 }
 
@@ -97,9 +99,10 @@ impl Material for lambertian {
         let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();
         //scattered = &mut scene::Ray::new(rec.p, scatter_direction);
         if scatter_direction.near_zero() {scatter_direction = rec.normal;}
-        scattered.orig = rec.p;
-        scattered.dir = scatter_direction;
-        scattered.tm = r_in.time();
+        // scattered.orig = rec.p;
+        // scattered.dir = scatter_direction;
+        // scattered.tm = r_in.time();
+        *scattered = ray::Ray::new(rec.p, scatter_direction, r_in.time());
         //*attenuation = self.albedo.clone();
         *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
         return true
@@ -184,5 +187,34 @@ impl Material for dielectric {
         scattered.dir = direction;
         scattered.tm = r_in.time();
         return true
+    }
+}
+
+
+
+//发光材质
+//这里将灯光也当做了一种材质,这种材质可以发光
+//但是对光线没有反射,折射等交互作用
+pub struct diffuse_light {
+    emit: Rc<dyn texture::texture>
+}
+
+impl diffuse_light {
+    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+        Self {emit: Rc::clone(&a)}
+    }
+    pub fn new_with_para(c: &color) -> Self {
+        Self {
+            emit: Rc::new(texture::solid_color::new_with_para(&c.clone()))
+        }
+    }
+}
+
+impl Material for diffuse_light {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
+        false //光源并不散射光线
+    }
+    fn emitted(&self, u: f64, v: f64, p: &mut Vec3) -> color {
+        self.emit.value(u, v, p)     //////
     }
 }
