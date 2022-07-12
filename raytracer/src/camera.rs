@@ -6,7 +6,7 @@ use crate::ray;
 
 type point3 = Vec3;
 
-fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
+pub fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
     degrees * rtweekend::pi / 180.0
 }
 

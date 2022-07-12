@@ -40,7 +40,7 @@ pub fn merge_sort(nums: &mut Vec<Rc<dyn scene::hittable> >, start: usize, end: u
         }
     }
 
-    _merge_sort(nums, start, start+end, cmp)
+    _merge_sort(nums, start, end+1, cmp)
 }
 
 pub fn box_compare(a: Rc<dyn scene::hittable>, b: Rc<dyn scene::hittable>, axis: usize) -> bool {
@@ -116,7 +116,7 @@ impl bvh_node {
     }
     pub fn new_with_3para(mut list: &mut scene::hittable_list, time0: f64, time1: f64) -> Self {
         let l = list.objects.clone().len();
-        bvh_node::new_with_5para(&mut list.objects, 0, l as usize, time0, time1)
+        bvh_node::new_with_5para(&mut list.objects, 0, l as usize - 1, time0, time1)
     }
     pub fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         *output_box = self.Box.clone();

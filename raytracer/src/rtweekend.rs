@@ -5,10 +5,10 @@ use rand::Rng;
 use rand::prelude::ThreadRng;
 pub const infinity: f64 = std::f64::INFINITY;
 pub const pi: f64 = 3.1415926535897932385;
-
+pub const e: f64 = std::f64::consts::E;
 pub fn random_double_1() -> f64 {
-    let secret_number = rand::thread_rng().gen_range(1..10000);
-    return (secret_number as f64) / 10001.0
+    let secret_number = rand::thread_rng().gen_range(1..1000000);
+    return (secret_number as f64) / 1000001.0
 }
 
 pub fn random_double_2(min: f64, max: f64) -> f64 {

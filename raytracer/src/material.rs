@@ -201,7 +201,7 @@ pub struct diffuse_light {
 
 impl diffuse_light {
     pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
-        Self {emit: Rc::clone(&a)}
+        Self {emit: a}    ////////////
     }
     pub fn new_with_para(c: &color) -> Self {
         Self {
@@ -216,5 +216,34 @@ impl Material for diffuse_light {
     }
     fn emitted(&self, u: f64, v: f64, p: &mut Vec3) -> color {
         self.emit.value(u, v, p)     //////
+    }
+}
+
+
+
+
+//各向同性
+pub struct isotropic {
+    albedo: Rc<dyn texture::texture>,
+}
+
+impl isotropic {
+    pub fn new_with_para(c: &color) -> Self {
+        Self {
+            albedo: Rc::new(texture::solid_color::new_with_para(c)),
+        }
+    }
+    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+        Self {
+            albedo: a,
+        }
+    }
+}
+
+impl Material for isotropic {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
+        *scattered = ray::Ray::new(rec.p, rtweekend::random_in_unit_sphere(), r_in.time());
+        *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
+        return true
     }
 }

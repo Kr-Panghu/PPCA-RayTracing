@@ -51,16 +51,16 @@ impl Perlin {
     }
 
     pub fn noise(&self, p: &point3) -> f64 {
-        let mut u = p.x() - f64::floor(p.x());
-        let mut v = p.y() - f64::floor(p.y());
-        let mut w = p.z() - f64::floor(p.z());
+        let u = p.x() - f64::floor(p.x());
+        let v = p.y() - f64::floor(p.y());
+        let w = p.z() - f64::floor(p.z());
 
         // let i = (4.0*p.x()) as usize & 255;
         // let j = (4.0*p.y()) as usize & 255;
         // let k = (4.0*p.z()) as usize & 255;
-        let i = f64::floor(p.x()) as usize;
-        let j = f64::floor(p.y()) as usize;
-        let k = f64::floor(p.z()) as usize;
+        let i = f64::floor(p.x()) as i32;
+        let j = f64::floor(p.y()) as i32;
+        let k = f64::floor(p.z()) as i32;
         // let mut arr: [[i32; 4]; 4] = [[2, 4, 6, 8],
         // [1, 2, 3, 5],
         // [4, 5, 8, 3],
@@ -73,9 +73,9 @@ impl Perlin {
             for dj in 0..2 {
                 for dk in 0..2 {
                     c[di][dj][dk] = self.ranvec[(
-                        self.perm_x[(i+di) & 255] ^ 
-                        self.perm_y[(j+dj) & 255] ^ 
-                        self.perm_z[(k+dk) & 255]
+                        self.perm_x[((i+di as i32) & 255) as usize] ^ 
+                        self.perm_y[((j+dj as i32) & 255) as usize] ^ 
+                        self.perm_z[((k+dk as i32) & 255) as usize]
                     ) as usize];
                 }
             }
@@ -103,20 +103,20 @@ impl Perlin {
     }
 }
 
-pub fn trilinear_interp(c: [[[f64; 2];2];2], u: f64, v:f64, w: f64) -> f64 {
-    let mut accum: f64 = 0.0;
-    for i in 0..2 {
-        for j in 0..2 {
-            for k in 0..2 {
-                accum += (i as f64*u + (1.0-i as f64) * (1.0-u))
-                        *(j as f64*v + (1.0-j as f64) * (1.0-v))
-                        *(k as f64*w + (1.0-k as f64) * (1.0-w))
-                        *c[i][j][k];
-            }
-        }
-    }
-    return accum
-}
+// pub fn trilinear_interp(c: [[[f64; 2];2];2], u: f64, v:f64, w: f64) -> f64 {
+//     let mut accum: f64 = 0.0;
+//     for i in 0..2 {
+//         for j in 0..2 {
+//             for k in 0..2 {
+//                 accum += (i as f64*u + (1.0-i as f64) * (1.0-u))
+//                         *(j as f64*v + (1.0-j as f64) * (1.0-v))
+//                         *(k as f64*w + (1.0-k as f64) * (1.0-w))
+//                         *c[i][j][k];
+//             }
+//         }
+//     }
+//     return accum
+// }
 
 pub fn perlin_interp(c: [[[Vec3; 2];2];2], u: f64, v: f64, w: f64) -> f64 {
     //Hermitian厄米平滑改进

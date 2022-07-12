@@ -11,6 +11,8 @@ mod bvh;
 mod texture;
 mod perlin;
 mod aarect;
+mod block;
+mod constant_medium;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::ProgressBar;
 use rusttype::Font;
@@ -87,7 +89,7 @@ pub fn ray_color(r: &mut ray::Ray, background: &mut color, world: &mut dyn scene
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
 
-    if world.hit(r, 0.001, infinity, &mut rec) == false {
+    if !world.hit(r, 0.001, infinity, &mut rec) {
         return *background     //background.clone()
     }
     
@@ -95,14 +97,14 @@ pub fn ray_color(r: &mut ray::Ray, background: &mut color, world: &mut dyn scene
     let mut attenuation = color::zero();
     let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &mut rec.p);
 
-    if rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) == false {
+    if !rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
         //print!("{} {} {}\n", emitted.x(), emitted.y(), emitted.z());
-        return emitted.clone()
+        return emitted
     }
     //print!("{:?}", attenuation);
     //print!("{} {} {}      ", emitted.x(), emitted.y(), emitted.z());
     //print!("{} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
-    return emitted.clone() + Vec3::cdot(&attenuation.clone(), &ray_color(&mut scattered, background, world, depth - 1));
+    return emitted + Vec3::cdot(&attenuation, &ray_color(&mut scattered, background, world, depth - 1));
 
 
 
@@ -451,7 +453,7 @@ fn random_scene() -> scene::hittable_list {
 }
 
 
-fn cornell_box() -> scene::hittable_list {
+fn empty_cornell_box() -> scene::hittable_list {
     let red = Rc::new(material::lambertian::new(&Vec3::new(0.65,0.05,0.05)));
     let white = Rc::new(material::lambertian::new(&Vec3::new(0.73,0.73,0.73)));
     let green = Rc::new(material::lambertian::new(&Vec3::new(0.12,0.45,0.15)));
@@ -466,7 +468,139 @@ fn cornell_box() -> scene::hittable_list {
     objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
     objects.add(Rc::new(aarect::xy_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
 
+    objects.add(Rc::new(block::Block::new(&point3::new(130.0, 0.0, 65.0), &point3::new(295.0, 165.0, 230.0), white.clone())));
+    objects.add(Rc::new(block::Block::new(&point3::new(265.0, 0.0, 295.0), &point3::new(430.0, 330.0, 460.0), white.clone())));
+
     objects
+}
+
+fn standard_cornell_box() -> scene::hittable_list {
+    let red = Rc::new(material::lambertian::new(&Vec3::new(0.65,0.05,0.05)));
+    let white = Rc::new(material::lambertian::new(&Vec3::new(0.73,0.73,0.73)));
+    let green = Rc::new(material::lambertian::new(&Vec3::new(0.12,0.45,0.15)));
+    let light = Rc::new(material::diffuse_light::new_with_para(&Vec3::new(15.0,15.0,15.0)));
+
+    let mut objects = scene::hittable_list::new_without_para();
+
+    objects.add(Rc::new(aarect::yz_rect::new(green.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::yz_rect::new(red.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(light.clone(), 213.0, 343.0, 227.0, 332.0, 554.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::xy_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+
+    let block1_1 = Rc::new(block::Block::new(&Vec3::zero(), &Vec3::new(165.0, 330.0, 165.0), white.clone()));
+    let block1_2 = Rc::new(scene::rotate_y::new(block1_1, 15.0));
+    let block1 = Rc::new(scene::translate::new(block1_2, &Vec3::new(265.0, 0.0, 295.0)));
+    objects.add(block1);
+
+    let block2_1 = Rc::new(block::Block::new(&Vec3::zero(), &Vec3::new(165.0, 165.0, 165.0), white.clone()));
+    let block2_2 = Rc::new(scene::rotate_y::new(block2_1, -18.0));
+    let block2 = Rc::new(scene::translate::new(block2_2, &Vec3::new(130.0, 0.0, 65.0)));
+    objects.add(block2);
+
+    objects
+}
+
+
+fn cornell_smoke() -> scene::hittable_list {
+    let red = Rc::new(material::lambertian::new(&Vec3::new(0.65,0.05,0.05)));
+    let white = Rc::new(material::lambertian::new(&Vec3::new(0.73,0.73,0.73)));
+    let green = Rc::new(material::lambertian::new(&Vec3::new(0.12,0.45,0.15)));
+    let light = Rc::new(material::diffuse_light::new_with_para(&Vec3::new(7.0,7.0,7.0)));
+
+    let mut objects = scene::hittable_list::new_without_para();
+
+    objects.add(Rc::new(aarect::yz_rect::new(green.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::yz_rect::new(red.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(light.clone(), 113.0, 443.0, 127.0, 432.0, 554.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 0.0)));
+    objects.add(Rc::new(aarect::xy_rect::new(white.clone(), 0.0, 555.0, 0.0, 555.0, 555.0)));
+
+    // let block1_1 = Rc::new(block::Block::new(&Vec3::zero(), &Vec3::new(165.0, 330.0, 165.0), white.clone()));
+    // let block1_2 = Rc::new(scene::rotate_y::new(block1_1, 15.0));
+    // let block1 = Rc::new(scene::translate::new(block1_2, &Vec3::new(265.0, 0.0, 295.0)));
+    // objects.add(block1);
+
+    let mut block1: Rc<dyn scene::hittable> = Rc::new(block::Block::new(&Vec3::zero(), &Vec3::new(165.0, 330.0, 165.0), white.clone()));
+    block1 = Rc::new(scene::rotate_y::new(block1, 15.0));
+    block1 = Rc::new(scene::translate::new(block1, &Vec3::new(265.0, 0.0, 295.0)));
+    // objects.add(block1);
+
+    let mut block2: Rc<dyn scene::hittable> = Rc::new(block::Block::new(&Vec3::zero(), &Vec3::new(165.0, 165.0, 165.0), white.clone()));
+    block2 = Rc::new(scene::rotate_y::new(block2, -18.0));
+    block2 = Rc::new(scene::translate::new(block2, &Vec3::new(130.0, 0.0, 65.0)));
+    // objects.add(block2);
+
+    objects.add(Rc::new(constant_medium::constant_medium::new_with_para(block1, 0.01, Vec3::zero())));
+    objects.add(Rc::new(constant_medium::constant_medium::new_with_para(block2, 0.01, Vec3::ones())));
+
+    objects
+}
+
+
+fn final_scene() -> scene::hittable_list {
+    let mut boxes1 = scene::hittable_list::new_without_para();
+    let ground = Rc::new(material::lambertian::new(&Vec3::new(0.48, 0.83, 0.53)));
+
+    let boxes_per_side = 20;
+    for i in 0..boxes_per_side {
+        for j in 0..boxes_per_side {
+            let w = 100.0;
+            let x0 = -1000.0 + i as f64 * w;
+            let z0 = -1000.0 + j as f64 * w;
+            let y0 = 0.0;
+            let x1 = x0 + w;
+            let y1 = rtweekend::random_double_2(1.0, 101.0);
+            let z1 = z0 + w;
+
+            boxes1.add(Rc::new(block::Block::new(&Vec3::new(x0,y0,z0), &Vec3::new(x1,y1,z1), ground.clone())));
+        }
+    }
+
+    let mut objects = scene::hittable_list::new_without_para();
+    objects.add(Rc::new(bvh::bvh_node::new_with_3para(&mut boxes1, 0.0, 1.0)));
+
+    let light = Rc::new(material::diffuse_light::new_with_para(&Vec3::new(7.0, 7.0, 7.0)));
+    objects.add(Rc::new(aarect::xz_rect::new(light.clone(), 123.0, 423.0, 147.0, 412.0, 554.0)));
+
+    let center1 = point3::new(400.0, 400.0, 200.0);
+    let center2 = center1 + Vec3::new(30.0, 0.0, 0.0);
+    let moving_sphere_material = Rc::new(material::lambertian::new(&Vec3::new(0.7, 0.3, 0.1)));
+    objects.add(Rc::new(moving_sphere::moving_sphere::new(center1, center2, 0.0, 1.0, 50.0, moving_sphere_material)));
+
+    objects.add(Rc::new(scene::Sphere::new(point3::new(260.0, 150.0, 45.0), 50.0, Rc::new(material::dielectric::new(1.5)))));
+    objects.add(Rc::new(scene::Sphere::new(point3::new(0.0, 150.0, 145.0), 50.0, Rc::new(material::metal::new(&Vec3::new(0.8,0.8,0.9), 1.0)))));
+
+    let boundary = Rc::new(scene::Sphere::new(point3::new(360.0,150.0,145.0), 70.0, Rc::new(material::dielectric::new(1.5))));
+    objects.add(boundary.clone());
+    objects.add(Rc::new(constant_medium::constant_medium::new_with_para(boundary, 0.2, Vec3::new(0.2, 0.4, 0.9))));
+    let boundary = Rc::new(scene::Sphere::new(point3::zero(), 5000.0, Rc::new(material::dielectric::new(1.5))));
+    objects.add(Rc::new(constant_medium::constant_medium::new_with_para(boundary, 0.0001, Vec3::ones())));
+
+    //let emat = Rc::new(material::lambertian::new_with_ptr(Rc::new(texture::)))
+    //
+
+    let pertext = Rc::new(texture::noise_texture::new_with_para(0.1));
+    objects.add(Rc::new(scene::Sphere::new(point3::new(220.0,280.0,300.0), 80.0, Rc::new(material::lambertian::new_with_ptr(pertext)))));
+
+    let mut boxes2 = scene::hittable_list::new_without_para();
+    let white = Rc::new(material::lambertian::new(&Vec3::new(0.73, 0.73, 0.73)));
+    let ns = 1000;
+    for j in 0..ns {
+        boxes2.add(Rc::new(scene::Sphere::new(Vec3::random_vector_2(0.0, 165.0), 10.0, white.clone())));
+    }
+
+    objects.add(Rc::new(scene::translate::new(
+                    Rc::new(scene::rotate_y::new
+                        (Rc::new(bvh::bvh_node::new_with_3para(&mut boxes2, 0.0, 1.0)), 15.0)), 
+                        &Vec3::new(-100.0,270.0,395.0)
+                )
+        )
+    );
+    
+    return objects
 }
 
 
@@ -490,7 +624,7 @@ fn main() {
 
     let mut world = scene::hittable_list::new_without_para();
 
-    let option = 6;    //option: 场景选择
+    let option = 9;    //option: 场景选择
     let mut lookfrom = Vec3::zero();
     let mut lookat = Vec3::zero();
 
@@ -531,13 +665,35 @@ fn main() {
         lookat = point3::new(0.0, 2.0, 0.0);
         vfov = 20.0;
     }
-    if option == 6 {
-        world = cornell_box();
+    if option == 6 || option == 7 {
+        if option == 6 {world = empty_cornell_box();} //option = 6
+        else {world = standard_cornell_box();}        //option = 7
         aspect_ratio = 1.0;
         image_width = 600;
         samples_per_pixel = 200;
         background = color::new(0.0, 0.0, 0.0);
         lookfrom = point3::new(278.0, 278.0, -800.0);
+        lookat = point3::new(278.0, 278.0, 0.0);
+        vfov = 40.0;
+    }
+    if option == 8 {
+        world = cornell_smoke();
+        aspect_ratio = 1.0;
+        image_width = 600;
+        samples_per_pixel = 200;
+        lookfrom = point3::new(278.0, 278.0, -800.0);
+        lookat = point3::new(278.0, 278.0, 0.0);
+        vfov = 40.0;
+    }
+    if option == 9 {
+        world = final_scene();
+        aspect_ratio = 1.0;
+        // image_width = 800;
+        // samples_per_pixel = 10000;
+        image_width = 400;
+        samples_per_pixel = 50;
+        background = color::zero();
+        lookfrom = point3::new(478.0, 278.0, -600.0);
         lookat = point3::new(278.0, 278.0, 0.0);
         vfov = 40.0;
     }

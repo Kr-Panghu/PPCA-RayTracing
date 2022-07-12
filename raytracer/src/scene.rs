@@ -8,6 +8,7 @@ use std::rc::Rc;
 use crate::material;
 use crate::bvh;
 use crate::moving_sphere;
+use crate::camera;
 // use std::num;
 use raytracer_codegen::make_spheres_impl;
 type point3 = Vec3;
@@ -16,9 +17,9 @@ type color = Vec3;
 const infinity: f64 = std::f64::INFINITY;
 const pi: f64 = 3.1415926535897932385;
 
-fn random_double() -> f64 {
-    random_double()
-}
+// fn random_double() -> f64 {
+//     random_double()
+// }
 
 // Call the procedural macro, which will become `make_spheres` function.
 //make_spheres_impl! {}
@@ -302,4 +303,134 @@ pub fn write_color(pixel_color: Vec3, samples_per_pixel: i32) {
     print!("{} ", (256.0 * clamp(r, 0.0, 0.999)) as i32);
     print!("{} ", (256.0 * clamp(g, 0.0, 0.999)) as i32);
     print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
+}
+
+
+
+//hittable的变换类 (实例的移动/坐标偏移)
+pub struct translate {
+    offset: Vec3,
+    ptr: Rc<dyn hittable>,
+}
+
+impl translate {
+    pub fn new(p: Rc<dyn hittable>, displacement: &Vec3) -> Self {
+        Self{
+            ptr: p,
+            offset: *displacement,
+        }
+    }
+}
+
+impl hittable for translate {
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+        let mut moved_r = ray::Ray::new(*r.origin()-self.offset, *r.direction(), r.time());
+        if !self.ptr.hit(&mut moved_r, t_min, t_max, rec) {
+            return false;
+        }
+
+        rec.p += self.offset;
+        rec.set_face_normal(&moved_r, &mut rec.normal.clone());
+
+        return true;
+    }
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+        if !self.ptr.bounding_box(time0, time1, output_box) {
+            return false;
+        }
+
+        *output_box = bvh::aabb::new_with_para(
+            &(output_box.min() + self.offset),
+            &(output_box.max() + self.offset)
+        );
+
+        return true;
+    }
+}
+
+
+pub struct rotate_y {
+    ptr: Rc<dyn hittable>,
+    sin_theta: f64,
+    cos_theta: f64,
+    hasbox: bool,
+    bbox: bvh::aabb,
+}
+
+impl rotate_y {
+    pub fn new(p: Rc<dyn hittable>, angle: f64) -> Self {
+        let radians = camera::degrees_to_radians(angle);
+        let _sin_theta = f64::sin(radians);
+        let _cos_theta = f64::cos(radians);
+        let mut _bbox = bvh::aabb::new();
+        let _hasbox = p.bounding_box(0.0, 1.0, &mut _bbox);
+
+        let mut min = point3::new(infinity, infinity, infinity);
+        let mut max = point3::new(-infinity, -infinity, -infinity);
+
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    let x = i as f64 * _bbox.max().x() + (1-i) as f64 * _bbox.min().x();
+                    let y = j as f64 * _bbox.max().y() + (1-j) as f64 * _bbox.min().y();
+                    let z = k as f64 * _bbox.max().z() + (1-k) as f64 * _bbox.min().z();
+
+                    let newx =  _cos_theta * x + _sin_theta * z;
+                    let newz = -_sin_theta * x + _cos_theta * z;
+
+                    let tester = Vec3::new(newx, y, newz);
+
+                    min.x = f64::min(min.x(), tester.x());
+                    min.y = f64::min(min.y(), tester.y());
+                    min.z = f64::min(min.z(), tester.z());
+                    max.x = f64::max(max.x(), tester.x());
+                    max.y = f64::max(max.y(), tester.y());
+                    max.z = f64::max(max.z(), tester.z());
+                }
+            }
+        }
+
+        Self {
+            ptr: p,
+            sin_theta: _sin_theta,
+            cos_theta: _cos_theta,
+            hasbox: _hasbox,
+            bbox: _bbox,
+        }
+    }
+}
+
+impl hittable for rotate_y {
+    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+        let mut origin = *r.origin();
+        let mut direction = *r.direction();
+
+        origin.x = self.cos_theta * r.origin().x() - self.sin_theta * r.origin().z();
+        origin.z = self.sin_theta * r.origin().x() + self.cos_theta * r.origin().z();
+
+        direction.x = self.cos_theta * r.direction().x() - self.sin_theta * r.direction().z();
+        direction.z = self.sin_theta * r.direction().x() + self.cos_theta * r.direction().z();
+
+        let mut rotated_r = ray::Ray::new(origin, direction, r.time());
+
+        if !self.ptr.hit(&mut rotated_r, t_min, t_max, rec) {return false}
+
+        let mut p = rec.p.clone();
+        let mut normal = rec.normal.clone();
+
+        p.x =  self.cos_theta * rec.p.x() + self.sin_theta * rec.p.z();
+        p.z = -self.sin_theta * rec.p.x() + self.cos_theta * rec.p.z();
+
+        normal.x =  self.cos_theta * rec.normal.x() + self.sin_theta * rec.normal.z();
+        normal.z = -self.sin_theta * rec.normal.x() + self.cos_theta * rec.normal.z();
+
+        rec.p = p;
+        rec.set_face_normal(&rotated_r, &mut normal);
+
+        return true;
+    }
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+        *output_box = self.bbox.clone();
+        return self.hasbox;
+    }
 }
