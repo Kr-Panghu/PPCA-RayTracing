@@ -6,6 +6,7 @@ use crate::rtweekend;
 use crate::ray;
 use crate::texture;
 use std::rc::Rc;
+use std::sync::Arc;
 type color = Vec3;
 // You SHOULD remove above line in your code.
 
@@ -14,7 +15,7 @@ type color = Vec3;
 // pub trait Texture {
 
 // }
-pub trait Material {
+pub trait Material: Sync + Send {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
@@ -78,16 +79,16 @@ pub trait Material {
 //也可以不衰减地散射但需要吸收 1 − R 部分的光线
 //或者可以混合使用这些策略
 pub struct lambertian {
-    albedo: Rc<dyn texture::texture>,
+    albedo: Arc<dyn texture::texture>,
 }
 
 impl lambertian {
     pub fn new(a: &Vec3) -> Self {
         Self {
-            albedo: Rc::new(texture::solid_color::new_with_para(a)),
+            albedo: Arc::new(texture::solid_color::new_with_para(a)),
         }
     }
-    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+    pub fn new_with_ptr(a: Arc<dyn texture::texture>) -> Self {
         Self {
             albedo: a,
         }
@@ -196,16 +197,16 @@ impl Material for dielectric {
 //这里将灯光也当做了一种材质,这种材质可以发光
 //但是对光线没有反射,折射等交互作用
 pub struct diffuse_light {
-    emit: Rc<dyn texture::texture>
+    emit: Arc<dyn texture::texture>
 }
 
 impl diffuse_light {
-    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+    pub fn new_with_ptr(a: Arc<dyn texture::texture>) -> Self {
         Self {emit: a}    ////////////
     }
     pub fn new_with_para(c: &color) -> Self {
         Self {
-            emit: Rc::new(texture::solid_color::new_with_para(&c.clone()))
+            emit: Arc::new(texture::solid_color::new_with_para(&c.clone()))
         }
     }
 }
@@ -224,16 +225,16 @@ impl Material for diffuse_light {
 
 //各向同性
 pub struct isotropic {
-    albedo: Rc<dyn texture::texture>,
+    albedo: Arc<dyn texture::texture>,
 }
 
 impl isotropic {
     pub fn new_with_para(c: &color) -> Self {
         Self {
-            albedo: Rc::new(texture::solid_color::new_with_para(c)),
+            albedo: Arc::new(texture::solid_color::new_with_para(c)),
         }
     }
-    pub fn new_with_ptr(a: Rc<dyn texture::texture>) -> Self {
+    pub fn new_with_ptr(a: Arc<dyn texture::texture>) -> Self {
         Self {
             albedo: a,
         }

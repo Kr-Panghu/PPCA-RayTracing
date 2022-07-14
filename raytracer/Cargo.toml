@@ -1,8 +1,8 @@
 [package]
 name = "raytracer"
 version = "0.1.0"
-authors = ["Alex Chi <iskyzh@gmail.com>"]
-edition = "2018"
+authors = ["Kr Cen"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,3 +14,4 @@ imageproc = "0.21"
 rand = "0.8.3"
 rusttype = "0.9"
 raytracer_codegen = { path = "../raytracer_codegen" }
+console = "0.15.0"

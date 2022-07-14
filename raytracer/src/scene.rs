@@ -7,13 +7,13 @@ use crate::ray;
 use std::rc::Rc;
 use crate::material;
 use crate::bvh;
-use crate::moving_sphere;
+use std::sync::Arc;
 use crate::camera;
 // use std::num;
 use raytracer_codegen::make_spheres_impl;
 type point3 = Vec3;
 type color = Vec3;
-
+use image::RgbImage;
 const infinity: f64 = std::f64::INFINITY;
 const pi: f64 = 3.1415926535897932385;
 
@@ -49,7 +49,7 @@ pub struct Sphere {
     center: Vec3,            //中心位置
     radius: f64,             //半径
     //material: DiffuseLight,  //材质
-    material: Rc<dyn material::Material>,
+    material: Arc<dyn material::Material>,
 }
 
 impl Sphere {
@@ -57,11 +57,11 @@ impl Sphere {
         Self {
             center: Vec3::zero(),
             radius: 0.0,
-            material: Rc::new(material::lambertian::new(&Vec3::ones()))
+            material: Arc::new(material::lambertian::new(&Vec3::ones()))
         }
     }
 
-    pub fn new(center: point3, radius: f64, material: Rc<dyn material::Material>) -> Self{
+    pub fn new(center: point3, radius: f64, material: Arc<dyn material::Material>) -> Self{
         Self {center, radius, material}
     }
 
@@ -137,7 +137,7 @@ pub struct hit_record {
     pub u: f64,           //u坐标
     pub v: f64,           //v坐标
     pub front_face: bool, //始终使得法线的方向与射线的方向相反
-    pub mat_ptr: Rc<dyn material::Material>,
+    pub mat_ptr: Arc<dyn material::Material>,
 }
 
 impl hit_record {
@@ -152,7 +152,7 @@ impl hit_record {
             u: 0.0,
             v: 0.0,
             front_face: false,
-            mat_ptr: Rc::new(material::lambertian::new(&Vec3::ones())),
+            mat_ptr: Arc::new(material::lambertian::new(&Vec3::ones())),
         }
     }
 
@@ -165,7 +165,7 @@ impl hit_record {
 
 //设计一个hittable的trait,并限定t的范围
 //当t_min<t<t_max时才认为有交点
-pub trait hittable {
+pub trait hittable: Sync + Send {
     fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         false
     }
@@ -199,7 +199,7 @@ impl hittable for Sphere {
         Sphere::get_sphere_uv(&outward_normal, &mut rec.u, &mut rec.v);
         rec.u = Sphere::get_sphere_u(&outward_normal);
         rec.v = Sphere::get_sphere_v(&outward_normal);
-        rec.mat_ptr = Rc::clone(&self.material);
+        rec.mat_ptr = Arc::clone(&self.material);
         return true
     }
     //球体的包围盒
@@ -212,8 +212,9 @@ impl hittable for Sphere {
 
 
 //可命中对象列表
+#[derive(Clone)]
 pub struct hittable_list {
-    pub objects: Vec< Rc<dyn hittable> >,
+    pub objects: Vec< Arc<dyn hittable> >,
 }
 
 impl hittable_list {
@@ -222,12 +223,12 @@ impl hittable_list {
             objects: Vec::new(),
         }
     }
-    pub fn new(object: Rc<dyn hittable>) -> Self {
+    pub fn new(object: Arc<dyn hittable>) -> Self {
         Self {
             objects: vec![object]  //使用宏
         }
     }
-    pub fn add(&mut self, object: Rc<dyn hittable>) {
+    pub fn add(&mut self, object: Arc<dyn hittable>) {
         self.objects.push(object);
     }
     pub fn clear(&mut self) {
@@ -290,7 +291,7 @@ pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
     return x;
 }
 
-pub fn write_color(pixel_color: Vec3, samples_per_pixel: i32) {
+pub fn write_color(pixel_color: Vec3, samples_per_pixel: usize, img: &mut RgbImage, i: usize, j: usize,) {
     let mut r = pixel_color.x();
     let mut g = pixel_color.y();
     let mut b = pixel_color.z();
@@ -300,9 +301,15 @@ pub fn write_color(pixel_color: Vec3, samples_per_pixel: i32) {
     r = f64::sqrt(r * scale);
     g = f64::sqrt(g * scale);
     b = f64::sqrt(b * scale);
-    print!("{} ", (256.0 * clamp(r, 0.0, 0.999)) as i32);
-    print!("{} ", (256.0 * clamp(g, 0.0, 0.999)) as i32);
-    print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
+    let pixel = img.get_pixel_mut(i.try_into().unwrap(), j.try_into().unwrap());
+    *pixel = image::Rgb([
+    // print!("{} ", (256.0 * clamp(r, 0.0, 0.999)) as i32);
+    // print!("{} ", (256.0 * clamp(g, 0.0, 0.999)) as i32);
+    // print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
+        (256.0 * clamp(r, 0.0, 0.999)).floor() as u8,
+        (256.0 * clamp(g, 0.0, 0.999)).floor() as u8,
+        (256.0 * clamp(b, 0.0, 0.999)).floor() as u8,
+    ])
 }
 
 
@@ -310,11 +317,11 @@ pub fn write_color(pixel_color: Vec3, samples_per_pixel: i32) {
 //hittable的变换类 (实例的移动/坐标偏移)
 pub struct translate {
     offset: Vec3,
-    ptr: Rc<dyn hittable>,
+    ptr: Arc<dyn hittable>,
 }
 
 impl translate {
-    pub fn new(p: Rc<dyn hittable>, displacement: &Vec3) -> Self {
+    pub fn new(p: Arc<dyn hittable>, displacement: &Vec3) -> Self {
         Self{
             ptr: p,
             offset: *displacement,
@@ -350,7 +357,7 @@ impl hittable for translate {
 
 
 pub struct rotate_y {
-    ptr: Rc<dyn hittable>,
+    ptr: Arc<dyn hittable>,
     sin_theta: f64,
     cos_theta: f64,
     hasbox: bool,
@@ -358,7 +365,7 @@ pub struct rotate_y {
 }
 
 impl rotate_y {
-    pub fn new(p: Rc<dyn hittable>, angle: f64) -> Self {
+    pub fn new(p: Arc<dyn hittable>, angle: f64) -> Self {
         let radians = camera::degrees_to_radians(angle);
         let _sin_theta = f64::sin(radians);
         let _cos_theta = f64::cos(radians);

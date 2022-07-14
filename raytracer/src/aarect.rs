@@ -1,15 +1,15 @@
 //rectangle
-use crate::rtweekend;
 use crate::scene;
 use crate::material;
 use crate::ray;
 use crate::bvh;
 use crate::Vec3;
 use std::rc::Rc;
+use std::sync::Arc;
 type point3 = Vec3;
 
 pub struct xy_rect {
-    mp: Rc<dyn material::Material>,
+    mp: Arc<dyn material::Material>,
     x0: f64,
     x1: f64,
     y0: f64,
@@ -18,7 +18,7 @@ pub struct xy_rect {
 }
 
 impl xy_rect {
-    pub fn new(mat: Rc<dyn material::Material>, _x0: f64, _x1: f64, _y0: f64, _y1: f64, _k: f64) -> Self {
+    pub fn new(mat: Arc<dyn material::Material>, _x0: f64, _x1: f64, _y0: f64, _y1: f64, _k: f64) -> Self {
         Self {
             mp: mat,
             x0: _x0,
@@ -45,7 +45,7 @@ impl scene::hittable for xy_rect {
 
         let mut outward_normal = Vec3::new(0.0, 0.0, 1.0);
         rec.set_face_normal(r, &mut outward_normal);
-        rec.mat_ptr = Rc::clone(&self.mp);    ///////////
+        rec.mat_ptr = Arc::clone(&self.mp);    ///////////
         rec.p = r.at(t);
 
         return true;
@@ -58,7 +58,7 @@ impl scene::hittable for xy_rect {
 
 
 pub struct xz_rect {
-    mp: Rc<dyn material::Material>,
+    mp: Arc<dyn material::Material>,
     x0: f64,
     x1: f64,
     z0: f64,
@@ -67,7 +67,7 @@ pub struct xz_rect {
 }
 
 impl xz_rect {
-    pub fn new(mat: Rc<dyn material::Material>, _x0: f64, _x1: f64, _z0: f64, _z1: f64, _k: f64) -> Self {
+    pub fn new(mat: Arc<dyn material::Material>, _x0: f64, _x1: f64, _z0: f64, _z1: f64, _k: f64) -> Self {
         Self {
             mp: mat,
             x0: _x0, x1: _x1, z0: _z0, z1: _z1, k: _k,
@@ -90,7 +90,7 @@ impl scene::hittable for xz_rect {
 
         let mut outward_normal = Vec3::new(0.0, 1.0, 0.0);
         rec.set_face_normal(r, &mut outward_normal);
-        rec.mat_ptr = Rc::clone(&self.mp);    ///////////
+        rec.mat_ptr = Arc::clone(&self.mp);    ///////////
         rec.p = r.at(t);
 
         return true;
@@ -103,7 +103,7 @@ impl scene::hittable for xz_rect {
 
 
 pub struct yz_rect {
-    mp: Rc<dyn material::Material>,
+    mp: Arc<dyn material::Material>,
     y0: f64,
     y1: f64,
     z0: f64,
@@ -112,7 +112,7 @@ pub struct yz_rect {
 }
 
 impl yz_rect {
-    pub fn new(mat: Rc<dyn material::Material>, _y0: f64, _y1: f64, _z0: f64, _z1: f64, _k: f64) -> Self {
+    pub fn new(mat: Arc<dyn material::Material>, _y0: f64, _y1: f64, _z0: f64, _z1: f64, _k: f64) -> Self {
         Self {
             mp: mat,
             y0: _y0, y1: _y1, z0: _z0, z1: _z1, k: _k,
@@ -135,7 +135,7 @@ impl scene::hittable for yz_rect {
 
         let mut outward_normal = Vec3::new(1.0, 0.0, 0.0);
         rec.set_face_normal(r, &mut outward_normal);
-        rec.mat_ptr = Rc::clone(&self.mp);    ///////////
+        rec.mat_ptr = Arc::clone(&self.mp);    ///////////
         rec.p = r.at(t);
 
         return true;

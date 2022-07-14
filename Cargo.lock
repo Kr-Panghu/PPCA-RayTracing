@@ -596,6 +596,7 @@ dependencies = [
 name = "raytracer"
 version = "0.1.0"
 dependencies = [
+ "console",
  "image",
  "imageproc",
  "indicatif",

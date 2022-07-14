@@ -7,6 +7,7 @@ use crate::Vec3;
 use crate::bvh;
 use crate::ray;
 use std::rc::Rc;
+use std::sync::Arc;
 
 //对于恒定的体积
 //只需要密度 C 和边界
@@ -14,32 +15,32 @@ use std::rc::Rc;
 
 //常量介质
 pub struct constant_medium {
-    boundary: Rc<dyn scene::hittable>,
-    phase_function: Rc<dyn material::Material>,
+    boundary: Arc<dyn scene::hittable>,
+    phase_function: Arc<dyn material::Material>,
     neg_inv_density: f64,
 }
 
 impl constant_medium {
-    pub fn new_with_ptr(b: Rc<dyn scene::hittable>, d: f64, a: Rc<dyn texture::texture>) -> Self {
+    pub fn new_with_ptr(b: Arc<dyn scene::hittable>, d: f64, a: Arc<dyn texture::texture>) -> Self {
         Self {
             boundary: b,
             neg_inv_density: -1.0/d,
-            phase_function: Rc::new(material::isotropic::new_with_ptr(a)), /////
+            phase_function: Arc::new(material::isotropic::new_with_ptr(a)), /////
         }
     }
-    pub fn new_with_para(b: Rc<dyn scene::hittable>, d: f64, c: Vec3) -> Self {
+    pub fn new_with_para(b: Arc<dyn scene::hittable>, d: f64, c: Vec3) -> Self {
         Self {
             boundary: b,
             neg_inv_density: -1.0/d,
-            phase_function: Rc::new(material::isotropic::new_with_para(&c)),
+            phase_function: Arc::new(material::isotropic::new_with_para(&c)),
         }
     }
 }
 
 impl scene::hittable for constant_medium {
     fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
-        let enableDebug = false;
-        let debugging = enableDebug && rtweekend::random_double_1() < 0.00001;
+        // let enableDebug = false;
+        // let debugging = enableDebug && rtweekend::random_double_1() < 0.00001;
         
         let mut rec1 = scene::hit_record::new();
         let mut rec2 = scene::hit_record::new();
@@ -47,7 +48,7 @@ impl scene::hittable for constant_medium {
         if !self.boundary.hit(r, -rtweekend::infinity, rtweekend::infinity, &mut rec1) {return false;}
         if !self.boundary.hit(r, rec1.t+0.0001, rtweekend::infinity, &mut rec2) {return false;}
 
-        if debugging {print!("\nt_min={} , t_max={}\n", rec1.t, rec2.t)};
+        //if debugging {print!("\nt_min={} , t_max={}\n", rec1.t, rec2.t)};
 
         if rec1.t < t_min {rec1.t = t_min}
         if rec2.t > t_max {rec2.t = t_max}
@@ -65,15 +66,15 @@ impl scene::hittable for constant_medium {
         rec.t = rec1.t + hit_distance / ray_length;
         rec.p = r.at(rec.t);
 
-        if debugging {
-            print!("hit_distance = {}\n", hit_distance);
-            print!("rec.t = {}\n", rec.t);
-            print!("rec.p = {:?}\n", rec.p);
-        }
+        // if debugging {
+        //     print!("hit_distance = {}\n", hit_distance);
+        //     print!("rec.t = {}\n", rec.t);
+        //     print!("rec.p = {:?}\n", rec.p);
+        // }
 
         rec.normal = Vec3::new(1.0, 0.0, 0.0);
         rec.front_face = true;
-        rec.mat_ptr = Rc::clone(&self.phase_function);
+        rec.mat_ptr = Arc::clone(&self.phase_function);
 
         return true
     }

@@ -4,6 +4,7 @@ use crate::material;
 use crate::ray;
 use std::rc::Rc;
 use crate::bvh;
+use std::sync::Arc;
 
 type point3 = Vec3;
 
@@ -12,11 +13,11 @@ pub struct moving_sphere {
     center1: point3,
     time0: f64, time1: f64,
     radius: f64,
-    mat_ptr: Rc<dyn material:: Material>
+    mat_ptr: Arc<dyn material:: Material>
 }
 
 impl moving_sphere {
-    pub fn new(cen0: point3, cen1: point3, _time0: f64, _time1: f64, r: f64, m: Rc<dyn material:: Material>) -> Self {
+    pub fn new(cen0: point3, cen1: point3, _time0: f64, _time1: f64, r: f64, m: Arc<dyn material:: Material>) -> Self {
         Self {
             center0: cen0,
             center1: cen1,
@@ -54,7 +55,7 @@ impl scene::hittable for moving_sphere {
         rec.p = r.at(rec.t);
         let mut outward_normal: Vec3 = (rec.p - self.center(r.time())) / self.radius;
         rec.set_face_normal(r, &mut outward_normal);
-        rec.mat_ptr = Rc::clone(&self.mat_ptr);
+        rec.mat_ptr = Arc::clone(&self.mat_ptr);
         return true
     }
 

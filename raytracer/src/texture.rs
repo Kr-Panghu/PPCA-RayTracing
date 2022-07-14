@@ -1,16 +1,13 @@
 use crate::Vec3;
-use crate::material;
-use crate::scene;
-use crate::rtweekend;
-use crate::ray;
 use crate::perlin;
 use std::rc::Rc;
+use std::sync::Arc;
 
 type color = Vec3;
 type point3 = Vec3;
 
 //纹理特性(纹理基类)
-pub trait texture {
+pub trait texture: Sync + Send {
     fn value(&self, u: f64, v: f64, p: &point3) -> color {
         return Vec3::zero()
     }
@@ -45,27 +42,27 @@ impl texture for solid_color {
 //以一种规则的方式交替正弦和余弦的符号,可以创建一个2D棋盘格纹理
 //如果在三维空间中乘上三角函数,这个乘积的符号就会形成一个3D棋盘格图案
 pub struct checker_texture {
-    odd: Rc<dyn texture>,
-    even: Rc<dyn texture>,
+    odd: Arc<dyn texture>,
+    even: Arc<dyn texture>,
 }
 
 impl checker_texture {
     pub fn new() -> Self {
         Self {
-            odd: Rc::new(solid_color::new()),
-            even: Rc::new(solid_color::new()),
+            odd: Arc::new(solid_color::new()),
+            even: Arc::new(solid_color::new()),
         }
     }
-    pub fn new_with_ptr(_even: Rc<dyn texture>, _odd: Rc<dyn texture>) -> Self {
+    pub fn new_with_ptr(_even: Arc<dyn texture>, _odd: Arc<dyn texture>) -> Self {
         Self {
-            even: Rc::clone(&_even),
-            odd: Rc::clone(&_odd),
+            even: Arc::clone(&_even),
+            odd: Arc::clone(&_odd),
         }
     }
     pub fn new_with_para(c1: &color, c2: &color) -> Self {
         Self {
-            even: Rc::new(solid_color::new_with_para(c1)),
-            odd: Rc::new(solid_color::new_with_para(c2)),
+            even: Arc::new(solid_color::new_with_para(c1)),
+            odd: Arc::new(solid_color::new_with_para(c2)),
         }
     }
 }

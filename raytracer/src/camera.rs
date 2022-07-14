@@ -1,6 +1,4 @@
 use crate::Vec3;
-use crate::material;
-use crate::scene;
 use crate::rtweekend;
 use crate::ray;
 
@@ -11,6 +9,7 @@ pub fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
 }
 
 //摄像机类
+#[derive(Clone)]
 pub struct camera {
     origin: point3,
     lower_left_corner: point3,

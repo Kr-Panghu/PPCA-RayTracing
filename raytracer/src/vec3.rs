@@ -110,6 +110,14 @@ impl Vec3 {
             }
         }
     }
+    pub fn get(&self, index: i32) -> f64 {
+        match index {
+            0 => self.x,
+            1 => self.y,
+            2 => self.z,
+            _ => panic!("Index of 'Vector3' is out of bound!"),
+        }
+    }
 }
 
 type point3 = Vec3;
@@ -241,10 +249,13 @@ impl Div<f64> for Vec3 {
 }
 
 impl Mul for Vec3 {
-    type Output = f64;
+    type Output = Self;
 
-    fn mul(self, other: Self) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
+    // fn mul(self, other: Self) -> f64 {
+    //     self.x * other.x + self.y * other.y + self.z * other.z
+    // }
+    fn mul(self, other: Self) -> Vec3 {
+        Vec3::new(self.x * other.x, self.y * other.y, self.z * other.z)
     }
 }
 
