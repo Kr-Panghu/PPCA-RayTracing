@@ -1,8 +1,4 @@
 make --dry-run --always-make --keep-going --print-directory
-objc[1418]: Class AMSupportURLConnectionDelegate is implemented in both /usr/lib/libauthinstall.dylib (0x206193ad8) and /System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/MobileDevice (0x1111942c8). One of the two will be used. Which one is undefined.
-
-objc[1418]: Class AMSupportURLSession is implemented in both /usr/lib/libauthinstall.dylib (0x206193b28) and /System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/MobileDevice (0x111194318). One of the two will be used. Which one is undefined.
-
 make: Entering directory `/Users/kr/Desktop/Debug for BVH'
 cargo run
 make: Leaving directory `/Users/kr/Desktop/Debug for BVH'

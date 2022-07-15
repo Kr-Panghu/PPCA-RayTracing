@@ -27,8 +27,6 @@ use std::collections::VecDeque;
 use rand::Rng;
 use std::thread;
 use std::time::Instant;
-use option::*;
-
 use console::style;
 use std::{f64::INFINITY, fs::File, process::exit};
 use std::fmt::Display;
@@ -223,19 +221,26 @@ fn main() {
 
     print!("{}[2J", 27 as char);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("--------------------\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥");
+
+    println!("WELCOME! THIS IS A {} SIMULATOR", style("RAY TRACING").yellow());
+    println!("YOU CAN CHOOSE DIFFERENT SCENES TO EXPERIRENCE THE EFFECT OF COLORING");
+    println!("BUT REMEMBER THE ADDRESS YOU INPUT MUST BE {}", style("VALID").yellow());
+    println!("📝 Author: {}\n🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", style(AUTHOR).bold().blue());
+    println!("--------------------");
+
     println!(
         "{} 🚀 {}",
         style("[1/5]").bold().dim(),
         style("Part I: INITIALIZE AND READ SCENARIOS...").green()
     );
-    let now = Instant::now();
     const Threads: usize = 16;   //Number of threads
 
     println!("--------------------");
     println!(
         "{}\n{}",
         "PLEASE ENTER THE ADDRESS YOU WANT TO SAVE THE IMAGE",
-        style("Eg: raytracer/FINAL.png").yellow()
+        style("Eg: output/test.png").yellow()
     );
 
     let mut index = String::new();
@@ -260,13 +265,14 @@ fn main() {
 
     let mut aspect_ratio: f64 = 16.0 / 9.0; //纵横比
     let mut image_width: usize = 400;
-    let mut samples_per_pixel: usize = 50;
+    let mut samples_per_pixel: usize = 100;
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
     let mut vfov = 40.0;
     let mut aperture = 0.0;
     let mut background = color::zero();
-
+    let mut lookfrom = Vec3::zero();
+    let mut lookat = Vec3::zero();
     let mut option = 1; //option: 场景选择
 
     println!("PLEASE ENTER THE SCENE YOU WANT TO CHOOSE");
@@ -278,7 +284,8 @@ fn main() {
     println!("{}", style("6: RANDOM SCENE WITH BOUNCING SPHERES").yellow());
     println!("{}", style("7: EMPTY CORNELL BOX").yellow());
     println!("{}", style("8: STANDARD CORNELL BOX").yellow());
-    println!("{}", style("OTHERS: FINAL SCENE WITH ALL FEATURES").yellow());
+    println!("{}", style("9: FINAL SCENE WITH ALL FEATURES").yellow());
+    //println!("{}", style("OTHER: DEFAULT SCENE").yellow());
 
     println!("--------------------");
 
@@ -287,15 +294,19 @@ fn main() {
     let index = index.trim();
     match index.parse::<usize>() {
         Ok(i) => option = i,
-        Err(..) => println!("THIS WAS NOT AN INTEGER: {}", index),
+        Err(..) => {
+            println!("THIS WAS NOT AN INTEGER: {}", index);
+            println!("{} {} ❌\n--------------------\n", "THE PROGRAM ENDED", style("UNEXPECTEDLY").red());
+            exit(1);
+        }
+        //Err(..) => option = 0,
     }
+
+    println!("--------------------");
+    let now = Instant::now();
     
     //let option = 10;
-
-    let mut lookfrom = Vec3::zero();
-    let mut lookat = Vec3::zero();
-
-    let world = get_world(option, &mut aspect_ratio, &mut image_width, &mut samples_per_pixel, &mut background, &mut lookfrom, &mut lookat, &mut vfov, &mut aperture);
+    let world = option::get_world(option, &mut aspect_ratio, &mut image_width, &mut samples_per_pixel, &mut background, &mut lookfrom, &mut lookat, &mut vfov, &mut aperture);
 
     let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
     let cam = camera::camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
@@ -354,7 +365,7 @@ fn main() {
 
     //===============================PART III=================================
 
-
+    
     println!(
         "{} 🦀 {}",
         style("[3/5]").bold().dim(),
@@ -388,6 +399,7 @@ fn main() {
     //===============================PART IV=================================
 
 
+    println!("--------------------");
     println!(
         "{} 🏭 {}",
         style("[4/5]").bold().dim(),
@@ -412,20 +424,27 @@ fn main() {
     //===============================PART V=================================
 
 
+    println!("--------------------");
     println!(
         "{} 🔚 {}",
         style("[5/5]").bold().dim(),
         style("PART V: OUTPUT THE IMAGE...").green()
     );
-    println!("🎉 Congratulations! You got the output file in \"{}\"", style(OUTPUT).yellow());
+    println!("--------------------");
+    println!("\n🎉 {} {} \"{}\"", style("Congratulations!").bold().green(), style("You got the output file in").green(), style(OUTPUT).yellow());
     let output_image = image::DynamicImage::ImageRgb8(img);
     let mut output_file = File::create(OUTPUT).unwrap();
-    match output_image.write_to(&mut output_file, image::ImageOutputFormat::Jpeg(QUALITY)) {
+    match output_image.write_to(&mut output_file, image::ImageOutputFormat::Jpeg(QUALITY)) {    //specified quality
         Ok(_) => {}
         // Err(_) => panic!("Outputting image fails."),
         Err(_) => println!("{}", style("Unfortunately, you failed to load image.").red()),
     }
-    println!("Execution Time: Done in {} seconds", now.elapsed().as_millis() / 1000);
+    println!("🕒 {} {} {}\n", 
+        style("Execution Time: Done in").blue(), 
+        style(now.elapsed().as_millis() / 1000).bold().yellow(), 
+        style("seconds").blue(),
+    );
+
 }
 
 

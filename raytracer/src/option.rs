@@ -15,6 +15,17 @@ use crate::constant_medium;
 type color = Vec3;
 type point3 = Vec3;
 
+fn default_scene() -> scene::hittable_list {
+    let pertext = Arc::new(texture::noise_texture::new_with_para(4.0));
+    let a = Arc::new(material::lambertian::new_with_ptr(pertext.clone()));
+    let b = Arc::clone(&a);
+    let mut objects = scene::hittable_list::new(Arc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, a)));
+    objects.add(Arc::new(scene::Sphere::new(Vec3::new(0.0, 2.0, 0.0), 2.0, b)));
+    let difflight = Arc::new(material::diffuse_light::new_with_para(&color::new(4.0,4.0,4.0)));
+    objects.add(Arc::new(aarect::xy_rect::new(difflight ,3.0, 5.0, 1.0, 3.0, -2.0)));
+    objects
+}
+
 fn two_spheres() -> scene::hittable_list {
     let checker = Arc::new(texture::checker_texture::new_with_para(&Vec3::new(0.2,0.3,0.1), &Vec3::new(0.9,0.9,0.9)));
     let mut objects = scene::hittable_list::new(Arc::new(scene::Sphere::new(point3::new(0.0,-10.0,0.0), 10.0, Arc::new(material::lambertian::new_with_ptr(checker.clone())))));
@@ -31,7 +42,15 @@ fn two_perlin_spheres() -> scene::hittable_list {
     objects
 }
 
-// fn earth() -> scene::hittable_list {}
+fn earth() -> scene::hittable_list {
+    let earth_texture = Arc::new(texture::image_texture::new_with_para("data/earthmap.jpg"));
+    //let earth_texture = Arc::new(texture::image_texture::new_with_para("data/doge.jpg"));
+    let earth_surface = Arc::new(material::lambertian::new_with_ptr(earth_texture));
+    let globe = Arc::new(scene::Sphere::new(Vec3::zero(), 2.0, earth_surface));
+    let mut world = scene::hittable_list::new_without_para();
+    world.add(globe);
+    world
+}
 
 fn simple_light() -> scene::hittable_list {
     let pertext = Arc::new(texture::noise_texture::new_with_para(4.0));
@@ -45,11 +64,11 @@ fn simple_light() -> scene::hittable_list {
 }
 
 fn random_scene() -> scene::hittable_list {
-    //let ground_material = Rc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
-    //let mut world = scene::hittable_list::new(Rc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
+    let ground_material = Arc::new(material::lambertian::new(&Vec3::new(0.5, 0.5, 0.5)));
+    let mut world = scene::hittable_list::new(Arc::new(scene::Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, ground_material)));
 
-    let checker = Arc::new(texture::checker_texture::new_with_para(&color::new(0.2,0.3,0.1), &color::new(0.9,0.9,0.9)));
-    let mut world = scene::hittable_list::new(Arc::new(scene::Sphere::new(point3::new(0.0,-1000.0,0.0), 1000.0, Arc::new(material::lambertian::new_with_ptr(checker)))));
+    //let checker = Arc::new(texture::checker_texture::new_with_para(&color::new(0.2,0.3,0.1), &color::new(0.9,0.9,0.9)));
+    //let mut world = scene::hittable_list::new(Arc::new(scene::Sphere::new(point3::new(0.0,-1000.0,0.0), 1000.0, Arc::new(material::lambertian::new_with_ptr(ground_material)))));
 
     for a in (-11)..12 {
         for b in (-11)..12 {
@@ -224,8 +243,8 @@ fn final_scene() -> scene::hittable_list {
     let boundary = Arc::new(scene::Sphere::new(point3::zero(), 5000.0, Arc::new(material::dielectric::new(1.5))));
     objects.add(Arc::new(constant_medium::constant_medium::new_with_para(boundary, 0.0001, Vec3::ones())));
 
-    //let emat = Rc::new(material::lambertian::new_with_ptr(Rc::new(texture::)))
-    //
+    let emat = Arc::new(material::lambertian::new_with_ptr(Arc::new(texture::image_texture::new_with_para("data/earthmap.jpg"))));
+    objects.add(Arc::new(scene::Sphere::new(Vec3::new(400.0, 200.0, 400.0), 100.0, emat)));
 
     let pertext = Arc::new(texture::noise_texture::new_with_para(0.1));
     objects.add(Arc::new(scene::Sphere::new(point3::new(220.0,280.0,300.0), 80.0, Arc::new(material::lambertian::new_with_ptr(pertext)))));
@@ -280,13 +299,13 @@ pub fn get_world(op: usize,
         *vfov = 20.0;
         return two_perlin_spheres();
     }
-    // else if op == 4 {
-    //     *background = color::new(0.7, 0.8, 1.0);
-    //     *lookfrom = Vec3::new(13.0,100.0,3.0);
-    //     *lookat = Vec3::zero();
-    //     *vfov = 20.0;
-    //     return earth();   
-    // }
+    else if op == 4 {
+        *background = color::new(0.7, 0.8, 1.0);
+        *lookfrom = Vec3::new(13.0,2.0,3.0);
+        *lookat = Vec3::zero();
+        *vfov = 20.0;
+        return earth();   
+    }
     else if op == 5 {
         *samples_per_pixel = 400;
         *background = color::zero();
@@ -319,7 +338,7 @@ pub fn get_world(op: usize,
         *vfov = 40.0;
         return cornell_smoke();
     }
-    else {
+    else if op == 9 {
         *aspect_ratio = 1.0;
         // *image_width = 800;
         // *samples_per_pixel = 10000;
@@ -331,4 +350,5 @@ pub fn get_world(op: usize,
         *vfov = 40.0;
         return final_scene();
     }
+    default_scene()
 }

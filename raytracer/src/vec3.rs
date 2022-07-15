@@ -67,6 +67,15 @@ impl Vec3 {
         u.x * v.x + u.y * v.y + u.z * v.z
     }
 
+    pub fn get(&self, index: i32) -> f64 {
+        match index {
+            0 => self.x,
+            1 => self.y,
+            2 => self.z,
+            _ => panic!("Index of 'Vector3' is out of bound!"),
+        }
+    }
+
     // pub fn write_color(&self) { //for pixel_color
     //     let r = 
     //     print!("{} ", (255.999 * self.x()) as i32);
@@ -108,14 +117,6 @@ impl Vec3 {
             if p.squared_length() < 1.0 {
                 return p
             }
-        }
-    }
-    pub fn get(&self, index: i32) -> f64 {
-        match index {
-            0 => self.x,
-            1 => self.y,
-            2 => self.z,
-            _ => panic!("Index of 'Vector3' is out of bound!"),
         }
     }
 }

@@ -88,9 +88,19 @@ pub fn box_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>, axis: i32) -> O
     if !a.bounding_box(0.0, 0.0, &mut box_a) || !b.bounding_box(0.0, 0.0, &mut box_b) {
         print!("No bounding box in bvh_node constructor.\n");
     }
-    // if axis == 0 {return box_a.min().x() < box_b.min().x()}
-    // else if axis == 1 {return box_a.min().y() < box_b.min().y()}
-    // return box_a.min().z() < box_b.min().z()
+    // if axis == 0 { 
+    //     if box_a.min().x() < box_b.min().x() {return Ordering::Less}
+    //     if box_a.min().x() == box_b.min().x() {return Ordering::Equal}
+    //     if box_a.min().x() > box_b.min().x() {return Ordering::Greater}
+    // }
+    // else if axis == 1 {
+    //     if box_a.min().y() < box_b.min().y() {return Ordering::Less}
+    //     if box_a.min().y() == box_b.min().y() {return Ordering::Equal}
+    //     if box_a.min().y() > box_b.min().y() {return Ordering::Greater}
+    // }
+    // if box_a.min().z() < box_b.min().z() {return Ordering::Less}
+    // if box_a.min().z() == box_b.min().z() {return Ordering::Equal}
+    // return Ordering::Greater
     box_a.min().get(axis).total_cmp(&box_b.min().get(axis))
 }
 
@@ -173,9 +183,8 @@ impl hittable for bvh_node {
         }
         
         let hit_left = self.left.hit(r, t_min, t_max, rec);
-        let hit_right: bool;
-        if hit_left {hit_right = self.right.hit(r, t_min, rec.t, rec)}
-        else {hit_right = self.right.hit(r, t_min, t_max, rec)}
+        let hit_right = if hit_left {self.right.hit(r, t_min, rec.t, rec)}
+                        else {self.right.hit(r, t_min, t_max, rec)};
 
         return hit_left || hit_right
     }
@@ -219,10 +228,10 @@ impl aabb {
     //注意: aabb类有独立的hit函数, 并非impl hittable Trait
     pub fn hit(&self, r: &Ray, mut t_min: f64, mut t_max: f64) -> bool {
         //aabb轴对齐的边界框命中函数
-        for a in 0..3 {
-            let invD = 1.0 / r.direction().get(a);
-            let mut t0 = (self.min().get(a) - r.origin().get(a)) * invD;
-            let mut t1 = (self.max().get(a) - r.origin().get(a)) * invD;
+        for index in 0..3 {
+            let invD = 1.0 / r.direction().get(index);
+            let mut t0 = (self.min().get(index) - r.origin().get(index)) * invD;
+            let mut t1 = (self.max().get(index) - r.origin().get(index)) * invD;
             if invD < 0.0 {
                 let tmp = t0;
                 t0 = t1;

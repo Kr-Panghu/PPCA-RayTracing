@@ -1,7 +1,9 @@
 use crate::Vec3;
 use crate::perlin;
 use std::rc::Rc;
+use crate::scene;
 use std::sync::Arc;
+use image::*;
 
 type color = Vec3;
 type point3 = Vec3;
@@ -117,31 +119,54 @@ impl texture for noise_texture {
 
 //-------------------------------------------------------------------------------------------
 
-// const bytes_per_pixel: i64 = 3; 
+const bytes_per_pixel: i64 = 3; 
 
-// pub struct image_texture {
-//     data: String,           //????????
-//     width: i64,
-//     height: i64,
-//     bytes_per_scanline: i64,
-// }
+//图像纹理
+#[derive(Clone)]
+pub struct image_texture {
+    data: image::ImageBuffer<image::Rgb<u8>, Vec<u8> >,           //????????
+    width: usize,
+    height: usize,
+    //bytes_per_scanline: i64,
+}
 
-// impl image_texture {
-//     pub fn new() -> Self {
-//         Self {
-//             data: String::new(),
-//             width: 0,
-//             height: 0,
-//             bytes_per_scanline: 0,
-//         }
-//     }
-//     pub fn new_with_para(filename: String) -> Self {
-//         let components_per_pixel = bytes_per_pixel;
-//         let _data = 
+impl image_texture {
+    pub fn new() -> Self {
+        Self {
+            data: image::ImageBuffer::new(0, 0),
+            width: 0,
+            height: 0,
+        }
+    }
+    #[allow(dead_code)]
+    pub fn new_with_para(filename: &str) -> Self {
+        let data = image::open(filename).unwrap().into_rgb8();
+        let width = data.width() as usize;
+        let height = data.height() as usize;
+        Self {data, width, height}
+    }
+}
+
+impl texture for image_texture {
+    fn value(&self, mut u: f64, mut v: f64, p: &point3) -> Vec3 {
+        if self.data.is_empty() {   ///???????
+            return Vec3::new(0.0, 1.0, 1.0);
+        }
+        u = scene::clamp(u, 0.0, 1.0);
+        v = 1.0 - scene::clamp(v, 0.0, 1.0);
+        let mut i = (u * self.width as f64) as usize;
+        let mut j = (v * self.height as f64) as usize;
         
-//         Self {
+        if i >= self.width  {i = self.width - 1}
+        if j >= self.height {j = self.height - 1}
 
-//         }
-//     }
-// }
-
+        if i < self.width && j < self.height {
+            let pixel = self.data.get_pixel(i.try_into().unwrap(), j.try_into().unwrap()).to_rgb();
+            return Vec3::new(pixel[0] as f64 / 255.0,
+                             pixel[1] as f64 / 255.0,
+                             pixel[2] as f64 / 255.0
+                            )
+        }
+        else {return Vec3::ones()}
+    }
+}
