@@ -4,21 +4,14 @@
 #![warn(non_snake_case)]
 mod material;
 mod scene;
-mod vec3;
-mod rtweekend;
-mod camera;
-mod ray;
-mod moving_sphere;
-mod bvh;
-mod aabb;
-mod onb;
+//mod bvh;
+pub mod BVH;
+pub mod BASIC;
+pub mod objects;
 mod texture;
 mod perlin;
-mod aarect;
-mod block;
 mod option;
 mod pdf;
-mod constant_medium;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::{ProgressBar, MultiProgress};
 use rusttype::Font;
@@ -27,13 +20,14 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use threadpool::ThreadPool;
 use std::rc::Rc;
-pub use vec3::Vec3;
+use BASIC::ray::Ray;
+pub use BASIC::vec3::Vec3;
 use std::collections::VecDeque;
 use rand::Rng;
 use std::thread;
 use std::time::Instant;
 use console::style;
-use rtweekend::*;
+use BASIC::rtweekend::*;
 use pdf::*;
 use std::{f64::INFINITY, fs::File, process::exit};
 use std::fmt::Display;
@@ -54,7 +48,7 @@ impl World {
 
 const MAX_DEPTH: i32 = 50; //限制递归深度
 
-pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &Arc<bvh::bvh_node>, lights: Arc<dyn scene::hittable>, depth: i32) -> Vec3 {
+pub fn ray_color(r: &mut Ray, background: &mut Color, world: &Arc<BVH::bvh::bvh_node>, lights: Arc<dyn scene::hittable>, depth: i32) -> Vec3 {
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
 
@@ -62,7 +56,7 @@ pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &Arc<bvh::bvh_
         return *background      //background.clone()
     }
     
-    let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
+    let mut scattered = Ray::new(Vec3::zero(),Vec3::zero(),0.0);
     let mut attenuation = Color::zero();
     let emitted = rec.mat_ptr.emitted(r, &rec.clone(), rec.u, rec.v, &mut rec.p);
 
@@ -105,7 +99,7 @@ pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &Arc<bvh::bvh_
     let p0 = Arc::new(HittablePdf::new(lights.clone(), &rec.p));
     let p1 = Arc::new(CosinePdf::new(&rec.normal));
     let mixed_pdf = mixture_pdf::new(p0, p1);
-    scattered = ray::Ray::new(rec.p, mixed_pdf.generate(), r.time());
+    scattered = Ray::new(rec.p, mixed_pdf.generate(), r.time());
     pdf_val = mixed_pdf.value(scattered.direction());
 
     let temp_ptr = rec.mat_ptr.clone();
@@ -290,8 +284,8 @@ fn main() {
     
     //let option = 10;
     let world = option::get_world(option, &mut aspect_ratio, &mut image_width, &mut samples_per_pixel, &mut background, &mut lookfrom, &mut lookat, &mut vfov, &mut aperture);
-    let world = Arc::new(bvh::bvh_node::new_with_5para(&mut world.objects.clone(), 0, world.objects.len(), 0.0, 1.0));
-    let lights = Arc::new(aarect::xz_rect::new(
+    let world = Arc::new(BVH::bvh::bvh_node::new_with_5para(&mut world.objects.clone(), 0, world.objects.len(), 0.0, 1.0));
+    let lights = Arc::new(objects::aarect::xz_rect::new(
         Arc::new(material::lambertian::new(&Vec3::zero())),
         213.0,
         343.0,
@@ -307,7 +301,7 @@ fn main() {
     // aperture = 0.1;
 
     let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
-    let cam = camera::Camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+    let cam = BASIC::camera::Camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
     let section_line_num: usize = image_height as usize / n_jobs;
     let mut pixel_color = Vec::<Vec3>::new();
     //let mut thread_pool = VecDeque::<_>::new();
@@ -347,8 +341,8 @@ fn main() {
                         let mut pixel_color = Vec3::zero();
                         // take samples_per_pixel samples and average them
                         for _s in 0..samples_per_pixel {
-                            let u = (i as f64 + rtweekend::random_double_1()) / (image_width as f64);
-                            let v = (j as f64 + rtweekend::random_double_1()) / (image_height as f64);
+                            let u = (i as f64 + BASIC::rtweekend::random_double_1()) / (image_width as f64);
+                            let v = (j as f64 + BASIC::rtweekend::random_double_1()) / (image_height as f64);
                             let mut r = camera_clone.get_ray(u, v);
                             pixel_color += ray_color(&mut r, &mut background, &world_clone, lights_clone.clone(), MAX_DEPTH);
                         }

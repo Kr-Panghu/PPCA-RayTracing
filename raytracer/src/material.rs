@@ -2,10 +2,10 @@
 // #![allow(clippy::boxed_local)]
 use crate::scene;
 use crate::Vec3;
-use crate::rtweekend;
-use crate::ray;
+use crate::BASIC::rtweekend;
+use crate::BASIC::ray;
 use crate::texture;
-use crate::onb;
+use crate::BASIC::onb;
 use crate::pdf::*;
 use std::rc::Rc;
 use std::sync::Arc;

@@ -1,5 +1,5 @@
 use crate::Vec3;
-use crate::rtweekend;
+use crate::BASIC::rtweekend;
 type Point3 = Vec3;
 //pub const PointCount: usize = 256;
 

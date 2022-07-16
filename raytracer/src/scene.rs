@@ -3,13 +3,13 @@
 
 use crate::Vec3;
 use crate::World;
-use crate::ray;
+use crate::BASIC::ray;
 use std::rc::Rc;
 use crate::material;
-use crate::bvh;
-use crate::aabb::aabb;
+use crate::BVH::bvh;
+use crate::BVH::aabb::aabb;
 use std::sync::Arc;
-use crate::camera;
+use crate::BASIC::camera;
 // use std::num;
 use raytracer_codegen::make_spheres_impl;
 type point3 = Vec3;

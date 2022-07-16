@@ -2,10 +2,10 @@ use crate::scene::*;
 use std::sync::Arc;
 use crate::Vec3;
 use std::cmp::Ordering;
-use crate::ray::*;
-use crate::rtweekend::*;
-use crate::aabb::*;
-use crate::onb::ONB;
+use crate::BASIC::ray::*;
+use crate::BASIC::rtweekend::*;
+use crate::BVH::aabb::*;
+use crate::BASIC::onb::ONB;
 
 pub trait Pdf {
     fn value(&self, direction: &Vec3) -> f64;
