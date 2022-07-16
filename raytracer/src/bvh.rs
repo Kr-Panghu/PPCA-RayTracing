@@ -1,18 +1,155 @@
 //层次包围盒
+#![allow(non_snake_case)]
 use crate::scene::*;
 use std::sync::Arc;
 use crate::Vec3;
 use std::cmp::Ordering;
 use crate::ray::*;
 use crate::rtweekend::*;
+use crate::aabb::*;
 
 type point3 = Vec3;
 
 pub struct bvh_node {
-    left: Arc<dyn hittable>,
+    left: Arc<dyn hittable>,    //子节点指针
     right: Arc<dyn hittable>,
     Box: aabb,
 }
+
+pub fn box_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>, axis: i32) -> Ordering {
+    let mut box_a = aabb::new();
+    let mut box_b = aabb::new();
+    if !a.bounding_box(0.0, 0.0, &mut box_a) || !b.bounding_box(0.0, 0.0, &mut box_b) {
+        print!("No bounding box in bvh_node constructor.\n");
+    }
+    box_a.min().get(axis).total_cmp(&box_b.min().get(axis))
+}
+
+pub fn box_x_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
+    box_compare(a, b, 0)
+}
+pub fn box_y_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
+    box_compare(a, b, 1)
+}
+pub fn box_z_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
+    box_compare(a, b, 2)
+}
+
+impl bvh_node {
+    pub fn new_with_5para(src_objects: &mut Vec< Arc<dyn hittable> >, start: usize, end: usize, time_0: f64, time_1: f64) -> Self {
+        //let mut objects = src_objects.clone();
+        let axis = random_int(0, 2); //创建源场景对象的可修改数组
+        // let comparator: fn(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering;
+
+        // //判定随机值bvh_node
+        // if axis == 0 {comparator = box_x_compare;}
+        // else if axis == 1 {comparator = box_y_compare;}
+        // else {comparator = box_z_compare;}
+        let comparator = if axis == 0 {
+            box_x_compare
+        } else if axis == 1 {
+            box_y_compare
+        } else {
+            box_z_compare
+        };
+
+        let object_span = end - start;
+
+        //let mut _right: std::rc::Rc<dyn scene::hittable> = std::rc::Rc::new(scene::Sphere::new_without_para());
+        let _right: Arc<dyn hittable>;
+        //let mut _left: std::rc::Rc<dyn scene::hittable> = std::rc::Rc::new(scene::Sphere::new_without_para());
+        let _left: Arc<dyn hittable>;
+        if object_span == 1 {
+            _left = src_objects[start].clone();
+            _right = src_objects[start].clone(); //vector下标只能为usize
+        }
+        else if object_span == 2 {
+            if comparator(&src_objects[start], &src_objects[start+1]) == Ordering::Less {
+                _left = src_objects[start].clone();
+                _right = src_objects[start+1].clone();
+            }
+            else {
+                _left = src_objects[start+1].clone();
+                _right = src_objects[start].clone();
+            }
+        }
+        else {
+            //merge_sort(src_objects, start, end, comparator);
+            src_objects[start..end].sort_by(comparator);
+            let mid = start + object_span / 2;
+            _left = Arc::new(bvh_node::new_with_5para(src_objects, start, mid, time_0, time_1));
+            _right = Arc::new(bvh_node::new_with_5para(src_objects, mid, end, time_0, time_1));
+        }
+
+        let mut box_left = aabb::new();
+        let mut box_right = aabb::new();
+
+        if !_left.bounding_box(time_0, time_1, &mut box_left)
+            || !_right.bounding_box(time_0, time_1, &mut box_right)
+        {print!("No bounding box in bvh_node constructor.\n");}
+        
+        Self {
+            left: Arc::clone(&_left), //clone() ?
+            right: Arc::clone(&_right),
+            Box: aabb::surrounding_box(box_left, box_right),
+        }
+    }
+    pub fn new_with_3para(list: &mut hittable_list, time0: f64, time1: f64) -> Self {
+        let l = list.objects.len();
+        bvh_node::new_with_5para(&mut list.objects, 0, l, time0, time1)
+    }
+    pub fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = self.Box.clone();
+        true
+    }
+    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+        if !self.Box.hit(ray, t_min, t_max) {
+            return false;
+        }
+        let hit_left = self.left.hit(ray, t_min, t_max, rec);
+        let hit_right = self.right.hit(ray, t_min, t_max, rec);
+        if hit_left || hit_right {
+            return true;
+        }
+        false
+    }
+}
+
+impl hittable for bvh_node {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+        if !self.Box.hit(r, t_min, t_max) {
+            return false
+        }
+        
+        let hit_left = self.left.hit(r, t_min, t_max, rec);
+        // let hit_right = if hit_left {self.right.hit(r, t_min, rec.t, rec)}
+        //                 else {self.right.hit(r, t_min, t_max, rec)};
+        let hit_right = self
+                        .right
+                        .hit(r, t_min, if hit_left { rec.t } else { t_max }, rec);
+
+        return hit_left || hit_right
+    }
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = self.Box;
+        true
+    }
+}
+
+
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn test_merge_sort() {
+//         let mut a: Vec<usize> = vec![10,2,5,8];
+//         merge_sort(&mut a);
+//         assert_eq!(a[0], 2);
+//     }
+// }
+
 
 //归并排序, 函数作为参量
 // pub fn merge_sort(nums: &mut Vec<Rc<dyn scene::hittable> >, start: usize, end: usize, cmp: fn(Rc<dyn scene::hittable>,Rc<dyn scene::hittable>)->bool) {
@@ -82,12 +219,7 @@ pub struct bvh_node {
 //     }
 // }
 
-pub fn box_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>, axis: i32) -> Ordering {
-    let mut box_a = aabb::new();
-    let mut box_b = aabb::new();
-    if !a.bounding_box(0.0, 0.0, &mut box_a) || !b.bounding_box(0.0, 0.0, &mut box_b) {
-        print!("No bounding box in bvh_node constructor.\n");
-    }
+
     // if axis == 0 { 
     //     if box_a.min().x() < box_b.min().x() {return Ordering::Less}
     //     if box_a.min().x() == box_b.min().x() {return Ordering::Equal}
@@ -101,177 +233,3 @@ pub fn box_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>, axis: i32) -> O
     // if box_a.min().z() < box_b.min().z() {return Ordering::Less}
     // if box_a.min().z() == box_b.min().z() {return Ordering::Equal}
     // return Ordering::Greater
-    box_a.min().get(axis).total_cmp(&box_b.min().get(axis))
-}
-
-pub fn box_x_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
-    box_compare(a, b, 0)
-}
-pub fn box_y_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
-    box_compare(a, b, 1)
-}
-pub fn box_z_compare(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering {
-    box_compare(a, b, 2)
-}
-
-impl bvh_node {
-    pub fn new_with_5para(src_objects: &mut Vec< Arc<dyn hittable> >, start: usize, end: usize, time_0: f64, time_1: f64) -> Self {
-        let mut objects = src_objects.clone();
-        let axis = random_int(0, 2); //创建源场景对象的可修改数组
-        let comparator: fn(a: &Arc<dyn hittable>, b: &Arc<dyn hittable>) -> Ordering;
-
-        //判定随机值bvh_node
-        if axis == 0 {comparator = box_x_compare;}
-        else if axis == 1 {comparator = box_y_compare;}
-        else {comparator = box_z_compare;}
-
-        let object_span = end - start;
-
-        //let mut _right: std::rc::Rc<dyn scene::hittable> = std::rc::Rc::new(scene::Sphere::new_without_para());
-        let mut _right: Arc<dyn hittable>;
-        //let mut _left: std::rc::Rc<dyn scene::hittable> = std::rc::Rc::new(scene::Sphere::new_without_para());
-        let mut _left: Arc<dyn hittable>;
-        if object_span == 1 {
-            _right = objects[start].clone(); //vector下标只能为usize
-            _left = _right.clone();
-        }
-        else if object_span == 2 {
-            if comparator(&objects[start], &objects[start+1]) == Ordering::Less {
-                _left = objects[start].clone();
-                _right = objects[start+1].clone();
-            }
-            else {
-                _left = objects[start+1].clone();
-                _right = objects[start].clone();
-            }
-        }
-        else { //object_span == 3
-            //merge_sort(src_objects, start, end, comparator);
-            src_objects[start..end].sort_by(comparator);
-            let mid = start + object_span / 2;
-            _left = Arc::new(bvh_node::new_with_5para(&mut objects, start, mid, time_0, time_1));
-            _right = Arc::new(bvh_node::new_with_5para(&mut objects, mid, end, time_0, time_1));
-        }
-
-        let mut box_left = aabb::new();
-        let mut box_right = aabb::new();
-
-        if !_left.bounding_box(time_0, time_1, &mut box_left)
-            || !_right.bounding_box(time_0, time_1, &mut box_right)
-        {print!("No bounding box in bvh_node constructor.\n");}
-        
-        Self {
-            left: Arc::clone(&_left), //clone() ?
-            right: Arc::clone(&_right),
-            Box: aabb::surrounding_box(box_left, box_right),
-        }
-    }
-    pub fn new_with_3para(list: &mut hittable_list, time0: f64, time1: f64) -> Self {
-        let l = list.objects.len();
-        bvh_node::new_with_5para(&mut list.objects, 0, l, time0, time1)
-    }
-    pub fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
-        *output_box = self.Box.clone();
-        true
-    }
-}
-
-impl hittable for bvh_node {
-    fn hit(&self, r: &mut Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
-        if !self.Box.hit(r, t_min, t_max) {
-            return false
-        }
-        
-        let hit_left = self.left.hit(r, t_min, t_max, rec);
-        let hit_right = if hit_left {self.right.hit(r, t_min, rec.t, rec)}
-                        else {self.right.hit(r, t_min, t_max, rec)};
-
-        return hit_left || hit_right
-    }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
-        *output_box = self.Box.clone();
-        true
-    }
-}
-
-
-
-
-//AABB: 轴对齐包围盒
-//#[derive(Clone)]
-#[derive(Clone)]
-pub struct aabb {
-    pub minimum: point3,
-    pub maximum: point3,
-}
-
-impl aabb {
-    pub fn new() -> Self {
-        Self {
-            minimum: Vec3::zero(),
-            maximum: Vec3::zero(),
-        }
-    }
-    pub fn new_with_para(a: &point3, b: &point3) -> Self {
-        Self {
-            minimum: *a,
-            maximum: *b,
-        }
-    }
-    pub fn min(&self) -> point3 {
-        self.minimum
-    }
-    pub fn max(&self) -> point3 {
-        self.maximum
-    }
-
-    //注意: aabb类有独立的hit函数, 并非impl hittable Trait
-    pub fn hit(&self, r: &Ray, mut t_min: f64, mut t_max: f64) -> bool {
-        //aabb轴对齐的边界框命中函数
-        for index in 0..3 {
-            let invD = 1.0 / r.direction().get(index);
-            let mut t0 = (self.min().get(index) - r.origin().get(index)) * invD;
-            let mut t1 = (self.max().get(index) - r.origin().get(index)) * invD;
-            if invD < 0.0 {
-                let tmp = t0;
-                t0 = t1;
-                t1 = tmp;
-            }
-            t_min = f64::max(t0, t_min);
-            t_max = f64::min(t1, t_max);
-            if t_max <= t_min {
-                return false
-            }        
-        }
-        true
-    }
-
-    pub fn surrounding_box(box0: aabb, box1: aabb) -> aabb {
-        let minimum = Vec3::new(f64::min(box0.min().x(), box1.min().x()),
-                              f64::min(box0.min().y(), box1.min().y()),
-                              f64::min(box0.min().z(), box1.min().z()));
-        let maximum = Vec3::new(f64::max(box0.max().x(), box1.max().x()),
-                            f64::max(box0.max().y(), box1.max().y()),
-                            f64::max(box0.max().z(), box1.max().z()));
-        //return aabb::new_with_para(&small, &big)
-        aabb { minimum, maximum }
-    }
-}
-
-
-
-
-
-
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn test_merge_sort() {
-//         let mut a: Vec<usize> = vec![10,2,5,8];
-//         merge_sort(&mut a);
-//         assert_eq!(a[0], 2);
-//     }
-// }

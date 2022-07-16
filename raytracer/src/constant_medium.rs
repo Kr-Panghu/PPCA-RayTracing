@@ -5,6 +5,7 @@ use crate::material;
 use crate::texture;
 use crate::Vec3;
 use crate::bvh;
+use crate::aabb::aabb;
 use crate::ray;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -14,13 +15,13 @@ use std::sync::Arc;
 //使用另一个hit表作为边界
 
 //常量介质
-pub struct constant_medium {
+pub struct ConstantMedium {
     boundary: Arc<dyn scene::hittable>,
     phase_function: Arc<dyn material::Material>,
     neg_inv_density: f64,
 }
 
-impl constant_medium {
+impl ConstantMedium {
     pub fn new_with_ptr(b: Arc<dyn scene::hittable>, d: f64, a: Arc<dyn texture::texture>) -> Self {
         Self {
             boundary: b,
@@ -37,8 +38,8 @@ impl constant_medium {
     }
 }
 
-impl scene::hittable for constant_medium {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+impl scene::hittable for ConstantMedium {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         // let enableDebug = false;
         // let debugging = enableDebug && rtweekend::random_double_1() < 0.00001;
         
@@ -79,7 +80,7 @@ impl scene::hittable for constant_medium {
         return true
     }
 
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         return self.boundary.bounding_box(time0, time1, output_box);
     }
 }

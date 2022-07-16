@@ -123,14 +123,14 @@ const bytes_per_pixel: i64 = 3;
 
 //图像纹理
 #[derive(Clone)]
-pub struct image_texture {
+pub struct ImageTexture {
     data: image::ImageBuffer<image::Rgb<u8>, Vec<u8> >,           //????????
     width: usize,
     height: usize,
     //bytes_per_scanline: i64,
 }
 
-impl image_texture {
+impl ImageTexture {
     pub fn new() -> Self {
         Self {
             data: image::ImageBuffer::new(0, 0),
@@ -147,9 +147,9 @@ impl image_texture {
     }
 }
 
-impl texture for image_texture {
+impl texture for ImageTexture {
     fn value(&self, mut u: f64, mut v: f64, p: &point3) -> Vec3 {
-        if self.data.is_empty() {   ///???????
+        if self.data.is_empty() {   
             return Vec3::new(0.0, 1.0, 1.0);
         }
         u = scene::clamp(u, 0.0, 1.0);

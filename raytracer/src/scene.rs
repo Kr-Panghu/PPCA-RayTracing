@@ -7,6 +7,7 @@ use crate::ray;
 use std::rc::Rc;
 use crate::material;
 use crate::bvh;
+use crate::aabb::aabb;
 use std::sync::Arc;
 use crate::camera;
 // use std::num;
@@ -50,6 +51,7 @@ pub struct Sphere {
     radius: f64,             //半径
     //material: DiffuseLight,  //材质
     material: Arc<dyn material::Material>,
+    num_of_hits: usize,
 }
 
 impl Sphere {
@@ -57,12 +59,14 @@ impl Sphere {
         Self {
             center: Vec3::zero(),
             radius: 0.0,
-            material: Arc::new(material::lambertian::new(&Vec3::ones()))
+            material: Arc::new(material::lambertian::new(&Vec3::ones())),
+            num_of_hits: 0,
         }
     }
 
     pub fn new(center: point3, radius: f64, material: Arc<dyn material::Material>) -> Self{
-        Self {center, radius, material}
+        let num_of_hits = 0;
+        Self {center, radius, material, num_of_hits}
     }
 
     pub fn get_sphere_uv(p: &point3, u: &mut f64, v: &mut f64) {
@@ -151,27 +155,37 @@ impl hit_record {
             t: 0.0,
             u: 0.0,
             v: 0.0,
-            front_face: false,
+            front_face: true,
             mat_ptr: Arc::new(material::lambertian::new(&Vec3::ones())),
         }
     }
 
     pub fn set_face_normal(&mut self, r: &ray::Ray, outward_normal: &mut Vec3) {
         self.front_face = Vec3::dot(r.direction(), &(*outward_normal).clone()) < 0.0;
-        if self.front_face {self.normal = *outward_normal;}  //outward_normal.clone()
-        else {self.normal = -*outward_normal}
+        if self.front_face {self.normal = outward_normal.clone();}  //outward_normal.clone()
+        else {self.normal = -outward_normal.clone()}
     }//////////////////
 }
+
+
+//----------------------------------------------------------------
+
 
 //设计一个hittable的trait,并限定t的范围
 //当t_min<t<t_max时才认为有交点
 pub trait hittable: Sync + Send {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool;
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool;
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool;
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool;
 }
 
+
+//----------------------------------------------------------------
+
+
+
+
 impl hittable for Sphere {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
         let oc = *r.origin() - self.center;
         let a = r.direction().squared_length();
         let half_b = Vec3::dot(r.direction(), &oc);
@@ -199,11 +213,9 @@ impl hittable for Sphere {
         return true
     }
     //球体的包围盒
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
-        // (*output_box).minimum = self.center - Vec3::new(self.radius, self.radius, self.radius);
-        // (*output_box).maximum = self.center + Vec3::new(self.radius, self.radius, self.radius);
-        *output_box = bvh::aabb::new_with_para( &(self.center - Vec3::new(self.radius, self.radius, self.radius))
-                                               ,&(self.center + Vec3::new(self.radius, self.radius, self.radius)) );
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = aabb::new_with_para( &(self.center - Vec3::ones() * self.radius)
+                                          ,&(self.center + Vec3::ones() * self.radius) );
         return true;
     }
 }
@@ -235,15 +247,15 @@ impl hittable_list {
 }
 
 impl hittable for hittable_list {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
-        //let mut temp_rec = hit_record::new();
-        let temp_rec = &mut hit_record::new();
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool{
+        //let temp_rec = &mut hit_record::new();
+        let mut temp_rec = rec.clone();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
         //for object in &self.objects {
         for object in self.objects.iter() {
             //hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record)
-            if object.hit(r, t_min, closest_so_far, temp_rec) {
+            if object.hit(r, t_min, closest_so_far, &mut temp_rec) {
                 hit_anything = true;
                 closest_so_far = temp_rec.t;
                 *rec = temp_rec.clone();
@@ -252,26 +264,31 @@ impl hittable for hittable_list {
         return hit_anything;
     }
 
-    fn bounding_box(&self, time0: f64, time1: f64, mut output_box: &mut bvh::aabb) -> bool {
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         if self.objects.is_empty() {return false}
 
-        let temp_box = &mut bvh::aabb::new();
+        // let temp_box = &mut aabb::new();
+        // let mut first_box = true;
+
+        // for object in &self.objects {
+        //     if !object.bounding_box(time0, time1, temp_box) {return false}
+        //     let damn = temp_box.clone();
+        //     if first_box {
+        //         *output_box = damn;
+        //     }
+        //     else {
+        //         *output_box = aabb::surrounding_box(output_box.clone(), temp_box.clone());
+        //     }
+        //     first_box = false;
+        // }
+
+        let mut temp_box = aabb::new();
         let mut first_box = true;
 
-        for object in &self.objects {
-            let damn = temp_box.clone();
-            if !object.bounding_box(time0, time1, temp_box) {return false}
-            if first_box {
-                *output_box = damn;
-            }
-            else {
-                // let damn_bro = output_box.clone();
-                // let damn_it = temp_box.clone();
-                // let damnit = bvh::aabb::surrounding_box(damn_bro, damn_it);
-                // output_box.minimum = damnit.min();
-                // output_box.maximum = damnit.max();
-                *output_box = bvh::aabb::surrounding_box(output_box.clone(), temp_box.clone());
-            }
+        for object in self.objects.iter() {
+            if !object.bounding_box(time0, time1, &mut temp_box) {return false}
+            *output_box = if first_box {temp_box}
+                          else {aabb::surrounding_box(*output_box, temp_box)};
             first_box = false;
         }
 
@@ -285,7 +302,7 @@ pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
     return x;
 }
 
-pub fn write_color(pixel_color: Vec3, samples_per_pixel: usize, img: &mut RgbImage, i: usize, j: usize,) {
+pub fn write_to_img(pixel_color: Vec3, samples_per_pixel: usize, img: &mut RgbImage, i: usize, j: usize,) {
     let mut r = pixel_color.x();
     let mut g = pixel_color.y();
     let mut b = pixel_color.z();
@@ -324,7 +341,7 @@ impl translate {
 }
 
 impl hittable for translate {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
         let mut moved_r = ray::Ray::new(*r.origin()-self.offset, *r.direction(), r.time());
         if !self.ptr.hit(&mut moved_r, t_min, t_max, rec) {
             return false;
@@ -335,12 +352,12 @@ impl hittable for translate {
 
         return true;
     }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         if !self.ptr.bounding_box(time0, time1, output_box) {
             return false;
         }
 
-        *output_box = bvh::aabb::new_with_para(
+        *output_box = aabb::new_with_para(
             &(output_box.min() + self.offset),
             &(output_box.max() + self.offset)
         );
@@ -355,7 +372,7 @@ pub struct rotate_y {
     sin_theta: f64,
     cos_theta: f64,
     hasbox: bool,
-    bbox: bvh::aabb,
+    bbox: aabb,
 }
 
 impl rotate_y {
@@ -363,7 +380,7 @@ impl rotate_y {
         let radians = camera::degrees_to_radians(angle);
         let _sin_theta = f64::sin(radians);
         let _cos_theta = f64::cos(radians);
-        let mut _bbox = bvh::aabb::new();
+        let mut _bbox = aabb::new();
         let _hasbox = p.bounding_box(0.0, 1.0, &mut _bbox);
 
         let mut min = point3::new(infinity, infinity, infinity);
@@ -402,7 +419,7 @@ impl rotate_y {
 }
 
 impl hittable for rotate_y {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
         let mut origin = *r.origin();
         let mut direction = *r.direction();
 
@@ -430,7 +447,7 @@ impl hittable for rotate_y {
 
         return true;
     }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         *output_box = self.bbox.clone();
         return self.hasbox;
     }

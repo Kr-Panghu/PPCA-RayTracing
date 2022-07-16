@@ -6,8 +6,9 @@ pub const infinity: f64 = std::f64::INFINITY;
 pub const pi: f64 = 3.1415926535897932385;
 pub const e: f64 = std::f64::consts::E;
 pub fn random_double_1() -> f64 {
-    let secret_number = rand::thread_rng().gen_range(1..10000);
-    return (secret_number as f64) / 10001.0
+    // let secret_number = rand::thread_rng().gen_range(1..10000);
+    // return (secret_number as f64) / 10001.0
+    rand::random::<f64>()
 }
 
 pub fn random_double_2(min: f64, max: f64) -> f64 {
@@ -54,7 +55,8 @@ impl Vec3 {
 pub fn random_int(min: i64, max: i64) -> i64{
     //返回[min, max]中的整数
     //round函数返回距离最近的整数
-    let mut random: ThreadRng = rand::thread_rng();
-    return random.gen_range(min..=max);
-    //return random_double_2(min as f64 - 0.5, max as f64 + 0.4999).round() as i64;
+    // let mut random: ThreadRng = rand::thread_rng();
+    // return random.gen_range(min..=max);
+    // return random_double_2(min as f64 - 0.5, max as f64 + 0.4999).round() as i64;
+    random_double_2(min as f64 , max as f64 + 1.0) as i64
 }

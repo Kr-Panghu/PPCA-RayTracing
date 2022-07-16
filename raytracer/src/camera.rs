@@ -2,7 +2,7 @@ use crate::Vec3;
 use crate::rtweekend;
 use crate::ray;
 
-type point3 = Vec3;
+type Point3 = Vec3;
 
 pub fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
     degrees * rtweekend::pi / 180.0
@@ -10,9 +10,9 @@ pub fn degrees_to_radians(degrees: f64) -> f64{ //度数到弧度
 
 //摄像机类
 #[derive(Clone)]
-pub struct camera {
-    origin: point3,
-    lower_left_corner: point3,
+pub struct Camera {
+    origin: Point3,
+    lower_left_corner: Point3,
     horizontal: Vec3,
     vertical: Vec3,
     u: Vec3, v: Vec3, w: Vec3,
@@ -20,7 +20,7 @@ pub struct camera {
     time0: f64, time1: f64, // shutter open/close times, 默认为0
 }
 
-impl camera {
+impl Camera {
     // pub fn new() -> Self {
     //     let aspect_ratio: f64 = 16.0 / 9.0; //纵横比
     //     let viewport_height = 2.0;
@@ -34,8 +34,8 @@ impl camera {
     //     }
     // }
 
-    pub fn new_with_para(lookfrom: &point3, 
-                         lookat: &point3, 
+    pub fn new_with_para(lookfrom: &Point3, 
+                         lookat: &Point3, 
                          vup: &Vec3,        //view_up
                          vfov: f64,         //垂直视野(度)
                          aspect_ratio: f64, //纵横比

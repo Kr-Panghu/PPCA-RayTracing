@@ -1,7 +1,7 @@
 use crate::Vec3;
 use crate::rtweekend;
-type point3 = Vec3;
-pub const point_count: usize = 256;
+type Point3 = Vec3;
+//pub const PointCount: usize = 256;
 
 pub struct Perlin { //柏林噪声
     //ranfloat: Vec<f64>, //*mut 原生指针
@@ -46,7 +46,7 @@ impl Perlin {
         }
     }
 
-    pub fn noise(&self, p: &point3) -> f64 {
+    pub fn noise(&self, p: &Point3) -> f64 {
         let u = p.x() - f64::floor(p.x());
         let v = p.y() - f64::floor(p.y());
         let w = p.z() - f64::floor(p.z());
@@ -83,7 +83,7 @@ impl Perlin {
 
     //湍流:使用具有多个求和频率的复合噪声
     //重复调用噪声的总和
-    pub fn turb(&self, p: &mut point3) -> f64 {
+    pub fn turb(&self, p: &mut Point3) -> f64 {
         let depth = 7;
         let mut accum = 0.0;
         let mut temp_p = p;

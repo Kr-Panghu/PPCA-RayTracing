@@ -2,13 +2,13 @@ use crate::material;
 use crate::scene;
 use crate::Vec3;
 
-type point3 = Vec3;
-type color = Vec3;
+type Point3 = Vec3;
+type Color = Vec3;
 
 #[derive(Debug)]
 pub struct Ray {
-    pub orig: point3,
-    pub dir: color,
+    pub orig: Point3,
+    pub dir: Color,
     pub tm: f64,
 }
 

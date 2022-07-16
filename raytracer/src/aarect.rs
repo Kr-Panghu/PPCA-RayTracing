@@ -4,6 +4,7 @@ use crate::material;
 use crate::ray;
 use crate::bvh;
 use crate::Vec3;
+use crate::aabb::*;
 use std::rc::Rc;
 use std::sync::Arc;
 type point3 = Vec3;
@@ -31,7 +32,7 @@ impl xy_rect {
 }
 
 impl scene::hittable for xy_rect {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         let t = (self.k - r.origin().z()) / r.direction().z();
         if t < t_min || t > t_max {return false}
         
@@ -50,8 +51,8 @@ impl scene::hittable for xy_rect {
 
         return true;
     }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
-        *output_box = bvh::aabb::new_with_para(&point3::new(self.x0, self.y0, self.k - 0.0001), &point3::new(self.x1, self.y1, self.k + 0.0001));
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = aabb::new_with_para(&point3::new(self.x0, self.y0, self.k - 0.0001), &point3::new(self.x1, self.y1, self.k + 0.0001));
         return true
     }
 }
@@ -76,7 +77,7 @@ impl xz_rect {
 }
 
 impl scene::hittable for xz_rect {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         let t = (self.k - r.origin().y()) / r.direction().y();
         if t < t_min || t > t_max {return false}
         
@@ -95,8 +96,8 @@ impl scene::hittable for xz_rect {
 
         return true;
     }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
-        *output_box = bvh::aabb::new_with_para(&point3::new(self.x0, self.k-0.0001, self.z0), &point3::new(self.x1, self.k-0.0001, self.z1));
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = aabb::new_with_para(&point3::new(self.x0, self.k-0.0001, self.z0), &point3::new(self.x1, self.k-0.0001, self.z1));
         return true
     }
 }
@@ -121,7 +122,7 @@ impl yz_rect {
 }
 
 impl scene::hittable for yz_rect {
-    fn hit(&self, r: &mut ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut scene::hit_record) -> bool {
         let t = (self.k - r.origin().x()) / r.direction().x();
         if t < t_min || t > t_max {return false}
         
@@ -140,8 +141,8 @@ impl scene::hittable for yz_rect {
 
         return true;
     }
-    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut bvh::aabb) -> bool {
-        *output_box = bvh::aabb::new_with_para(&point3::new(self.k-0.0001, self.y0, self.z0), &point3::new(self.k+0.0001, self.y1, self.z1));
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        *output_box = aabb::new_with_para(&point3::new(self.k-0.0001, self.y0, self.z0), &point3::new(self.k+0.0001, self.y1, self.z1));
         return true
     }
 }
