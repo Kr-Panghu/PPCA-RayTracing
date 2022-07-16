@@ -1,5 +1,5 @@
 make --dry-run --always-make --keep-going --print-directory
-make: Entering directory `/Users/kr/Desktop/Debug for BVH'
+make: Entering directory `/Users/kr/Desktop/REDUCE NOISE V2'
 cargo run
-make: Leaving directory `/Users/kr/Desktop/Debug for BVH'
+make: Leaving directory `/Users/kr/Desktop/REDUCE NOISE V2'
  

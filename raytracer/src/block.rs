@@ -19,18 +19,19 @@ pub struct Block {
 
 impl Block {
     pub fn new(p0: &Point3, p1: &Point3, ptr: Arc<dyn material::Material>) -> Self {
-        let mut _sides = hittable_list::new(Arc::new(aarect::xy_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.y(), p1.y(), p1.z())));
-        _sides.add(Arc::new(aarect::xy_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.y(), p1.y(), p0.z())));
+        let mut _sides =
+        hittable_list::new(Arc::new(aarect::xy_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.y(), p1.y(), p1.z())));
+                _sides.add(Arc::new(aarect::xy_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.y(), p1.y(), p0.z())));
 
-        _sides.add(Arc::new(aarect::xz_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.z(), p1.z(), p1.y())));
-        _sides.add(Arc::new(aarect::xz_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.z(), p1.z(), p0.y())));
+                _sides.add(Arc::new(aarect::xz_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.z(), p1.z(), p1.y())));
+                _sides.add(Arc::new(aarect::xz_rect::new(Arc::clone(&ptr), p0.x(), p1.x(), p0.z(), p1.z(), p0.y())));
 
-        _sides.add(Arc::new(aarect::yz_rect::new(Arc::clone(&ptr), p0.y(), p1.y(), p0.z(), p1.z(), p1.x())));
-        _sides.add(Arc::new(aarect::yz_rect::new(Arc::clone(&ptr), p0.y(), p1.y(), p0.z(), p1.z(), p0.x())));
+                _sides.add(Arc::new(aarect::yz_rect::new(Arc::clone(&ptr), p0.y(), p1.y(), p0.z(), p1.z(), p1.x())));
+                _sides.add(Arc::new(aarect::yz_rect::new(Arc::clone(&ptr), p0.y(), p1.y(), p0.z(), p1.z(), p0.x())));
 
         Self {
-            box_min: (*p0).clone(),
-            box_max: (*p1).clone(),
+            box_min: p0.clone(),
+            box_max: p1.clone(),
             sides: _sides.clone(),     //????????
         }
     }

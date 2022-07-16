@@ -176,6 +176,12 @@ impl hit_record {
 pub trait hittable: Sync + Send {
     fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool;
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool;
+    fn pdf_value(&self, o: &Vec3, v: &Vec3) -> f64 {
+        0.0
+    }
+    fn random(&self, o: &Vec3) -> Vec3 {
+        Vec3::new(1.0, 0.0, 0.0)
+    }
 }
 
 
@@ -252,8 +258,8 @@ impl hittable for hittable_list {
         let mut temp_rec = rec.clone();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
-        //for object in &self.objects {
-        for object in self.objects.iter() {
+        for object in &self.objects {
+        //for object in self.objects.iter() {
             //hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut hit_record)
             if object.hit(r, t_min, closest_so_far, &mut temp_rec) {
                 hit_anything = true;
@@ -267,30 +273,30 @@ impl hittable for hittable_list {
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         if self.objects.is_empty() {return false}
 
-        // let temp_box = &mut aabb::new();
-        // let mut first_box = true;
-
-        // for object in &self.objects {
-        //     if !object.bounding_box(time0, time1, temp_box) {return false}
-        //     let damn = temp_box.clone();
-        //     if first_box {
-        //         *output_box = damn;
-        //     }
-        //     else {
-        //         *output_box = aabb::surrounding_box(output_box.clone(), temp_box.clone());
-        //     }
-        //     first_box = false;
-        // }
-
-        let mut temp_box = aabb::new();
+        let temp_box = &mut aabb::new();
         let mut first_box = true;
 
-        for object in self.objects.iter() {
-            if !object.bounding_box(time0, time1, &mut temp_box) {return false}
-            *output_box = if first_box {temp_box}
-                          else {aabb::surrounding_box(*output_box, temp_box)};
+        for object in &self.objects {
+            if !object.bounding_box(time0, time1, temp_box) {return false}
+            let damn = temp_box.clone();
+            if first_box {
+                *output_box = damn;
+            }
+            else {
+                *output_box = aabb::surrounding_box(output_box.clone(), temp_box.clone());
+            }
             first_box = false;
         }
+
+        // let mut temp_box = aabb::new();
+        // let mut first_box = true;
+
+        // for object in self.objects.iter() {
+        //     if !object.bounding_box(time0, time1, &mut temp_box) {return false}
+        //     *output_box = if first_box {temp_box}
+        //                   else {aabb::surrounding_box(*output_box, temp_box)};
+        //     first_box = false;
+        // }
 
         return true
     }
@@ -302,36 +308,36 @@ pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
     return x;
 }
 
-pub fn write_to_img(pixel_color: Vec3, samples_per_pixel: usize, img: &mut RgbImage, i: usize, j: usize,) {
-    let mut r = pixel_color.x();
-    let mut g = pixel_color.y();
-    let mut b = pixel_color.z();
-    //根据样本数对颜色取平均值
-    let scale = 1.0 / (samples_per_pixel as f64);
-    //取根号, Gamma校正
-    r = f64::sqrt(r * scale);
-    g = f64::sqrt(g * scale);
-    b = f64::sqrt(b * scale);
-    let pixel = img.get_pixel_mut(i.try_into().unwrap(), j.try_into().unwrap());
-    *pixel = image::Rgb([
-    // print!("{} ", (256.0 * clamp(r, 0.0, 0.999)) as i32);
-    // print!("{} ", (256.0 * clamp(g, 0.0, 0.999)) as i32);
-    // print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
-        (256.0 * clamp(r, 0.0, 0.999)).floor() as u8,
-        (256.0 * clamp(g, 0.0, 0.999)).floor() as u8,
-        (256.0 * clamp(b, 0.0, 0.999)).floor() as u8,
-    ])
-}
+// pub fn write_to_img(pixel_color: Vec3, samples_per_pixel: usize, img: &mut RgbImage, i: usize, j: usize,) {
+//     let mut r = pixel_color.x();
+//     let mut g = pixel_color.y();
+//     let mut b = pixel_color.z();
+//     //根据样本数对颜色取平均值
+//     let scale = 1.0 / (samples_per_pixel as f64);
+//     //取根号, Gamma校正
+//     r = f64::sqrt(r * scale);
+//     g = f64::sqrt(g * scale);
+//     b = f64::sqrt(b * scale);
+//     let pixel = img.get_pixel_mut(i.try_into().unwrap(), j.try_into().unwrap());
+//     *pixel = image::Rgb([
+//     // print!("{} ", (256.0 * clamp(r, 0.0, 0.999)) as i32);
+//     // print!("{} ", (256.0 * clamp(g, 0.0, 0.999)) as i32);
+//     // print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
+//         (256.0 * clamp(r, 0.0, 0.999)).floor() as u8,
+//         (256.0 * clamp(g, 0.0, 0.999)).floor() as u8,
+//         (256.0 * clamp(b, 0.0, 0.999)).floor() as u8,
+//     ])
+// }
 
 
 
 //hittable的变换类 (实例的移动/坐标偏移)
-pub struct translate {
+pub struct Translate {
     offset: Vec3,
     ptr: Arc<dyn hittable>,
 }
 
-impl translate {
+impl Translate {
     pub fn new(p: Arc<dyn hittable>, displacement: &Vec3) -> Self {
         Self{
             ptr: p,
@@ -340,7 +346,7 @@ impl translate {
     }
 }
 
-impl hittable for translate {
+impl hittable for Translate {
     fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
         let mut moved_r = ray::Ray::new(*r.origin()-self.offset, *r.direction(), r.time());
         if !self.ptr.hit(&mut moved_r, t_min, t_max, rec) {
@@ -409,11 +415,11 @@ impl rotate_y {
         }
 
         Self {
-            ptr: p,
+            ptr: p.clone(),
             sin_theta: _sin_theta,
             cos_theta: _cos_theta,
             hasbox: _hasbox,
-            bbox: _bbox,
+            bbox: aabb::new_with_para(&min, &max),
         }
     }
 }
@@ -450,5 +456,26 @@ impl hittable for rotate_y {
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
         *output_box = self.bbox.clone();
         return self.hasbox;
+    }
+}
+
+pub struct flip_face {
+    ptr: Arc<dyn hittable>
+}
+
+impl flip_face {
+    pub fn new(p: Arc<dyn hittable>) -> Self {
+        Self { ptr: p }
+    }
+}
+
+impl hittable for flip_face {
+    fn hit(&self, r: &ray::Ray, t_min: f64, t_max: f64, rec: &mut hit_record) -> bool {
+        if !self.ptr.hit(r, t_min, t_max, rec) {return false}
+        rec.front_face = !rec.front_face;
+        true
+    }
+    fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
+        self.ptr.bounding_box(time0, time1, output_box)
     }
 }

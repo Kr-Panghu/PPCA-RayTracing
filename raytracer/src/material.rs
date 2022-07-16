@@ -5,74 +5,35 @@ use crate::Vec3;
 use crate::rtweekend;
 use crate::ray;
 use crate::texture;
+use crate::onb;
+use crate::pdf::*;
 use std::rc::Rc;
 use std::sync::Arc;
-type color = Vec3;
-// You SHOULD remove above line in your code.
+type Color = Vec3;
 
-// This file shows necessary examples of how to complete Track 4 and 5.
+struct ScatterRecord {
+    specular_ray: ray::Ray,
+    is_specular: bool, //specular reflection: "镜面反射"
+    attenuation: Color,
+    pdf_ptr: Arc<dyn Pdf>
+}
 
-// pub trait Texture {
 
-// }
 pub trait Material: Sync + Send {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
-    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
-    fn emitted(&self, u: f64, v: f64, p: &mut Vec3) -> color {
+    //fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
+    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  alb:&mut Vec3,  scattered:&mut ray::Ray, pdf: &mut f64) -> bool {
+        false
+    }
+    fn emitted(&self, r_in: &ray::Ray, rec: &scene::hit_record, u: f64, v: f64, p: &Vec3) -> Color {
         return Vec3::zero() //并不需要让所有材质实现emitted, 默认返回黑色
     }
+    fn scattering_pdf(&self, r_in: &ray::Ray, rec: &mut scene::hit_record, scattered: &ray::Ray) -> f64 {
+        0.0
+    }
 }
-
-/// `Lambertian` now takes a generic parameter `T`.
-/// This reduces the overhead of using `Box<dyn Texture>`
-// #[derive(Clone)]
-// pub struct Lambertian<T: Texture> {
-//     pub albedo: T,
-// }
-
-// impl<T: Texture> Lambertian<T> {
-//     pub fn new(albedo: T) -> Self {
-//         Self { albedo }
-//     }
-// }
-
-// impl<T: Texture> Material for Lambertian<T> {}
-
-// pub trait Hitable {}
-// pub struct AABB;
-
-/// This BVHNode should be constructed statically.
-/// You should use procedural macro to generate code like this:
-/// ```
-/// let bvh = BVHNode::construct(
-///     box BVHNode::construct(
-///         box Sphere { .. }
-///         box Sphere { .. }
-///     ),
-///     box BVHNode::construct(
-///         box Sphere { .. }
-///         box Sphere { .. }
-///     )
-/// )
-/// ```
-/// 
-/// And you can put that `bvh` into your `HittableList`.
-// pub struct BVHNode<L: Hitable, R: Hitable> {
-//     left: Box<L>,
-//     right: Box<R>,
-//     bounding_box: AABB,
-// }
-
-// impl<L: Hitable, R: Hitable> BVHNode<L, R> {
-//     pub fn construct(_left: Box<L>, _right: Box<R>) -> Self {
-//         unimplemented!()
-//     }
-// }
-
-//struct hit_record;
-
 
 //朗伯材料
 //它既可以始终散射并通过其反射率 R 进行衰减
@@ -96,17 +57,33 @@ impl lambertian {
 }
 
 impl Material for lambertian {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, mut scattered: &mut ray::Ray) -> bool {
-        let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();
-        //scattered = &mut scene::Ray::new(rec.p, scatter_direction);
-        if scatter_direction.near_zero() {scatter_direction = rec.normal;}
-        // scattered.orig = rec.p;
-        // scattered.dir = scatter_direction;
-        // scattered.tm = r_in.time();
-        *scattered = ray::Ray::new(rec.p, scatter_direction, r_in.time());
-        //*attenuation = self.albedo.clone();
-        *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
+    // fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, mut scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
+    //     //let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();        
+    //     //if scatter_direction.near_zero() {scatter_direction = rec.normal;}
+        
+    //     let direction = rtweekend::random_in_hemisphere(&rec.normal);  //随机半球抽样
+    //     *scattered = ray::Ray::new(rec.p, direction.unit(), r_in.time());
+    //     *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
+    //     //*pdf = Vec3::dot( &rec.normal, scattered.direction() ) / rtweekend::pi ;
+    //     *pdf = 0.5 / rtweekend::pi ;
+    //     return true
+    // }
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, alb: &mut Vec3, mut scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
+        //let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();        
+        //if scatter_direction.near_zero() {scatter_direction = rec.normal;}
+        let mut uvw = onb::ONB::new();
+        uvw.build_from_w(&rec.normal);
+        let direction = uvw.local_with_vec(&rtweekend::random_cosine_direction());
+        *scattered = ray::Ray::new(rec.p, direction.unit(), r_in.time());
+        *alb = self.albedo.value(rec.u, rec.v, &rec.p);
+        //*pdf = Vec3::dot( &rec.normal, scattered.direction() ) / rtweekend::pi ;
+        *pdf = Vec3::dot(&uvw.w(), scattered.direction()) / rtweekend::pi ;
         return true
+    }
+    fn scattering_pdf(&self, r_in: &ray::Ray, rec: &mut scene::hit_record, scattered: &ray::Ray) -> f64 {
+        let cosine = Vec3::dot(&rec.normal, &scattered.direction().unit());
+        if cosine < 0.0 {return 0.0}
+        cosine / rtweekend::pi
     }
 }
 
@@ -126,7 +103,7 @@ impl metal {
 }
 
 impl Material for metal {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool{
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool{
         let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
         // scattered = &mut scene::Ray::new(rec.p, reflected);
         //模糊反射 Fuzzy Reflection
@@ -165,7 +142,7 @@ impl dielectric {
 }
 
 impl Material for dielectric {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
         //attenuation = &mut Vec3::ones();
         attenuation.x = 1.0;
         attenuation.y = 1.0;
@@ -204,7 +181,7 @@ impl diffuse_light {
     pub fn new_with_ptr(a: Arc<dyn texture::texture>) -> Self {
         Self {emit: a}    ////////////
     }
-    pub fn new_with_para(c: &color) -> Self {
+    pub fn new_with_para(c: &Color) -> Self {
         Self {
             emit: Arc::new(texture::solid_color::new_with_para(&c.clone()))
         }
@@ -212,11 +189,12 @@ impl diffuse_light {
 }
 
 impl Material for diffuse_light {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
         false //光源并不散射光线
     }
-    fn emitted(&self, u: f64, v: f64, p: &mut Vec3) -> color {
-        self.emit.value(u, v, p)     //////
+    fn emitted(&self, r_in: &ray::Ray, rec: &scene::hit_record, u: f64, v: f64, p: &Vec3) -> Color {
+        if rec.front_face {return self.emit.value(u, v, p)}
+        Vec3::zero()
     }
 }
 
@@ -229,7 +207,7 @@ pub struct isotropic {
 }
 
 impl isotropic {
-    pub fn new_with_para(c: &color) -> Self {
+    pub fn new_with_para(c: &Color) -> Self {
         Self {
             albedo: Arc::new(texture::solid_color::new_with_para(c)),
         }
@@ -242,7 +220,7 @@ impl isotropic {
 }
 
 impl Material for isotropic {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
         *scattered = ray::Ray::new(rec.p, rtweekend::random_in_unit_sphere(), r_in.time());
         *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
         return true

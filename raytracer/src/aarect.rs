@@ -6,8 +6,9 @@ use crate::bvh;
 use crate::Vec3;
 use crate::aabb::*;
 use std::rc::Rc;
+use crate::rtweekend::*;
 use std::sync::Arc;
-type point3 = Vec3;
+type Point3 = Vec3;
 
 pub struct xy_rect {
     mp: Arc<dyn material::Material>,
@@ -46,13 +47,14 @@ impl scene::hittable for xy_rect {
 
         let mut outward_normal = Vec3::new(0.0, 0.0, 1.0);
         rec.set_face_normal(r, &mut outward_normal);
-        rec.mat_ptr = Arc::clone(&self.mp);    ///////////
+        rec.mat_ptr = Arc::clone(&self.mp);
         rec.p = r.at(t);
 
         return true;
     }
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
-        *output_box = aabb::new_with_para(&point3::new(self.x0, self.y0, self.k - 0.0001), &point3::new(self.x1, self.y1, self.k + 0.0001));
+        *output_box = aabb::new_with_para(&Point3::new(self.x0, self.y0, self.k - 0.0001), 
+                                          &Point3::new(self.x1, self.y1, self.k + 0.0001));
         return true
     }
 }
@@ -94,11 +96,27 @@ impl scene::hittable for xz_rect {
         rec.mat_ptr = Arc::clone(&self.mp);    ///////////
         rec.p = r.at(t);
 
-        return true;
+        true
     }
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
-        *output_box = aabb::new_with_para(&point3::new(self.x0, self.k-0.0001, self.z0), &point3::new(self.x1, self.k-0.0001, self.z1));
-        return true
+        *output_box = aabb::new_with_para(&Point3::new(self.x0, self.k-0.0001, self.z0), 
+                                          &Point3::new(self.x1, self.k-0.0001, self.z1));
+        true
+    }
+    fn pdf_value(&self, origin: &Vec3, v: &Vec3) -> f64 {
+        let mut rec = scene::hit_record::new();
+        if !self.hit(&ray::Ray::new(origin.clone(), v.clone(), 0.0), 0.001, infinity, &mut rec) {
+            return 0.0
+        }
+        let area = (self.x1-self.x0)*(self.z1-self.z0);
+        let distance_squared = rec.t * rec.t * v.squared_length();
+        let cosine = (Vec3::dot(v, &rec.normal) / v.length()).abs();
+
+        distance_squared / (cosine * area)
+    }
+    fn random(&self, origin: &Vec3) -> Vec3 {
+        let random_point = Vec3::new(random_double_2(self.x0, self.x1), self.k, random_double_2(self.z0, self.z1));
+        random_point - origin.clone()
     }
 }
 
@@ -142,8 +160,9 @@ impl scene::hittable for yz_rect {
         return true;
     }
     fn bounding_box(&self, time0: f64, time1: f64, output_box: &mut aabb) -> bool {
-        *output_box = aabb::new_with_para(&point3::new(self.k-0.0001, self.y0, self.z0), &point3::new(self.k+0.0001, self.y1, self.z1));
-        return true
+        *output_box = aabb::new_with_para(&Point3::new(self.k-0.0001, self.y0, self.z0), 
+                                          &Point3::new(self.k+0.0001, self.y1, self.z1));
+        true
     }
 }
 

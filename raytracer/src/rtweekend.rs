@@ -60,3 +60,15 @@ pub fn random_int(min: i64, max: i64) -> i64{
     // return random_double_2(min as f64 - 0.5, max as f64 + 0.4999).round() as i64;
     random_double_2(min as f64 , max as f64 + 1.0) as i64
 }
+
+pub fn random_cosine_direction() -> Vec3 {
+    let r1 = random_double_1();
+    let r2 = random_double_1();
+    let z = (1.0 - r2).sqrt();
+    
+    let phi = 2.0 * pi * r1;
+    let x = phi.cos() * r2.sqrt();
+    let y = phi.sin() * r2.sqrt();
+
+    Vec3::new(x, y, z)
+}

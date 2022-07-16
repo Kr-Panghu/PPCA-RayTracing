@@ -11,11 +11,13 @@ mod ray;
 mod moving_sphere;
 mod bvh;
 mod aabb;
+mod onb;
 mod texture;
 mod perlin;
 mod aarect;
 mod block;
 mod option;
+mod pdf;
 mod constant_medium;
 use image::{ImageBuffer, Rgb, RgbImage};
 use indicatif::{ProgressBar, MultiProgress};
@@ -32,6 +34,7 @@ use std::thread;
 use std::time::Instant;
 use console::style;
 use rtweekend::*;
+use pdf::*;
 use std::{f64::INFINITY, fs::File, process::exit};
 use std::fmt::Display;
 const AUTHOR: &str = "Kr Cen";
@@ -49,90 +52,66 @@ impl World {
     }
 }
 
-fn get_text() -> String {
-    // GITHUB_SHA is the associated commit ID
-    // only available on GitHub Action
-    let github_sha = option_env!("GITHUB_SHA")
-        .map(|x| "@".to_owned() + &x[0..6])
-        .unwrap_or_default();
-    format!("{}{}", AUTHOR, github_sha)
-}
-
-fn is_ci() -> bool {
-    option_env!("CI").unwrap_or_default() == "true"
-}
-
-// fn render_text(image: &mut RgbImage, msg: &str) {
-//     let font_file = if is_ci() {
-//         "EncodeSans-Regular.ttf"
-//     } else {
-//         "/System/Library/Fonts/Helvetica.ttc"
-//     };
-//     let font_path = std::env::current_dir().unwrap().join(font_file);
-//     let data = std::fs::read(&font_path).unwrap();
-//     let font: Font = Font::try_from_vec(data).unwrap_or_else(|| {
-//         panic!(format!(
-//             "error constructing a Font from data at {:?}",
-//             font_path
-//         ));
-//     });
-
-//     imageproc::drawing::draw_text_mut(
-//         image,
-//         Rgb([255, 255, 255]),
-//         10,
-//         10,
-//         rusttype::Scale::uniform(24.0),
-//         &font,
-//         msg,
-//     );
-// }
-
 const MAX_DEPTH: i32 = 50; //限制递归深度
 
-//光线: 渐变色
-// pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &mut dyn scene::hittable, depth: i32) -> Vec3 {
-//     let mut rec = scene::hit_record::new();
-//     if depth <= 0 { return Vec3::zero() }
-
-//     if !world.hit(r, 0.001, infinity, &mut rec) {
-//         return *background     //background.clone()
-//     }
-    
-//     let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
-//     let mut attenuation = Color::zero();
-//     let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &mut rec.p);
-    
-//     if !rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
-//         //print!("{} {} {}\n", emitted.x(), emitted.y(), emitted.z());
-//         return emitted
-//     }
-//     //print!("{:?}", attenuation);
-//     //print!("{} {} {}      ", emitted.x(), emitted.y(), emitted.z());
-//     //print!("{} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
-//     return emitted + Vec3::cdot(&attenuation, &ray_color(&mut scattered, background, world, depth - 1) );
-// }
-
-pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &Arc<bvh::bvh_node>, depth: i32) -> Vec3 {
+pub fn ray_color(r: &mut ray::Ray, background: &mut Color, world: &Arc<bvh::bvh_node>, lights: Arc<dyn scene::hittable>, depth: i32) -> Vec3 {
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
 
     if !world.hit(r, 0.001, infinity, &mut rec) {
-        return *background     //background.clone()
+        return *background      //background.clone()
     }
     
     let mut scattered = ray::Ray::new(Vec3::zero(),Vec3::zero(),0.0);
     let mut attenuation = Color::zero();
-    let emitted = rec.mat_ptr.emitted(rec.u, rec.v, &mut rec.p);
+    let emitted = rec.mat_ptr.emitted(r, &rec.clone(), rec.u, rec.v, &mut rec.p);
+
+    let mut pdf_val = 0.0;
+    let mut albedo = Color::zero();
     
-    if !rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
-        //print!("{} {} {}\n", emitted.x(), emitted.y(), emitted.z());
-        return emitted
-    }
-    //print!("{:?}", attenuation);
-    //print!("{} {} {}      ", emitted.x(), emitted.y(), emitted.z());
-    //print!("{} {} {}\n", attenuation.x(), attenuation.y(), attenuation.z());
-    return emitted + Vec3::cdot(&attenuation, &ray_color(&mut scattered, background, world, depth - 1) );
+    // if !rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
+    //     return emitted
+    // }
+    if !rec.mat_ptr.scatter(&r, &rec, &mut albedo, &mut scattered, &mut pdf_val) {return emitted}
+
+
+    //---------------------------------------
+    //光线采样
+    // let on_light = Vec3::new(random_double_2(213.0, 343.0), 554.0, random_double_2(227.0, 332.0));
+    // let mut to_light = on_light - rec.p;
+    // let distance_squared = to_light.squared_length();
+    // to_light = to_light.unit();
+
+    // if Vec3::dot(&to_light, &rec.normal) < 0.0 {
+    //     return emitted
+    // }
+    // let light_area = (343.0 - 213.0) * (332.0 - 227.0);
+    // let light_cosine = to_light.y().abs();
+    // if light_cosine < 0.000001 {
+    //     return emitted
+    // }
+    // pdf = distance_squared / (light_cosine * light_area);
+    // scattered = ray::Ray::new(rec.p, to_light, r.time());
+    //---------------------------------------
+
+    // let p = CosinePdf::new(&rec.normal);
+    // scattered = ray::Ray::new(rec.p, p.generate(), r.time());
+    // pdf_val = p.value(scattered.direction());
+
+    // let light_pdf = HittablePdf::new(lights.clone(), &rec.p);
+    // scattered = ray::Ray::new(rec.p, light_pdf.generate(), r.time());
+    // pdf_val = light_pdf.value(scattered.direction());
+
+    let p0 = Arc::new(HittablePdf::new(lights.clone(), &rec.p));
+    let p1 = Arc::new(CosinePdf::new(&rec.normal));
+    let mixed_pdf = mixture_pdf::new(p0, p1);
+    scattered = ray::Ray::new(rec.p, mixed_pdf.generate(), r.time());
+    pdf_val = mixed_pdf.value(scattered.direction());
+
+    let temp_ptr = rec.mat_ptr.clone();
+
+    return emitted + 
+        Vec3::cdot( &albedo, &ray_color(&mut scattered, background, world, lights, depth - 1) ) * temp_ptr.scattering_pdf(&r, &mut rec, &scattered) / pdf_val
 }
 
 
@@ -278,7 +257,7 @@ fn main() {
     let mut background = Color::zero();
     let mut lookfrom = Vec3::zero();
     let mut lookat = Vec3::zero();
-    let mut option: usize; //option: 场景选择
+    let mut option: usize; //option: Choose a scene to perform
 
     println!("PLEASE ENTER THE SCENE YOU WANT TO CHOOSE");
     println!("{}", style("1: RANDOM SCENE WITH BOUNCING SPHERES").yellow());
@@ -289,7 +268,7 @@ fn main() {
     println!("{}", style("6: EMPTY CORNELL BOX").yellow());
     println!("{}", style("7: STANDARD CORNELL BOX").yellow());
     println!("{}", style("8: CORNELL SMOKE").yellow());
-    println!("{}", style("9: FINAL SCENE WITH ALL FEATURES").yellow());
+    println!("{}", style("OTHER: FINAL SCENE WITH ALL FEATURES").yellow());
     //println!("{}", style("OTHER: DEFAULT SCENE").yellow());
 
     println!("--------------------");
@@ -300,8 +279,7 @@ fn main() {
     match index.parse::<usize>() {
         Ok(i) => option = i,
         Err(..) => {
-            println!("THIS WAS NOT AN INTEGER: {}", index);
-            println!("{} {} ❌\n--------------------\n", "THE PROGRAM ENDED", style("UNEXPECTEDLY").red());
+            println!("THIS WAS NOT AN INTEGER: {}\n{} {} ❌\n--------------------\n", index, "THE PROGRAM ENDED", style("UNEXPECTEDLY").red());
             exit(1);
         }
         //Err(..) => option = 0,
@@ -313,6 +291,14 @@ fn main() {
     //let option = 10;
     let world = option::get_world(option, &mut aspect_ratio, &mut image_width, &mut samples_per_pixel, &mut background, &mut lookfrom, &mut lookat, &mut vfov, &mut aperture);
     let world = Arc::new(bvh::bvh_node::new_with_5para(&mut world.objects.clone(), 0, world.objects.len(), 0.0, 1.0));
+    let lights = Arc::new(aarect::xz_rect::new(
+        Arc::new(material::lambertian::new(&Vec3::zero())),
+        213.0,
+        343.0,
+        227.0,
+        332.0,
+        554.0
+    ));
     // let world = Test_for_bvh();
     // background = Vec3::new(0.7, 0.8, 1.0);
     // lookfrom = Vec3::new(13.0, 2.0, 3.0);
@@ -323,7 +309,7 @@ fn main() {
     let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
     let cam = camera::Camera::new_with_para(&lookfrom, &lookat, &vup, vfov, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
     let section_line_num: usize = image_height as usize / n_jobs;
-    let mut output_pixel_color = Vec::<Vec3>::new();
+    let mut pixel_color = Vec::<Vec3>::new();
     //let mut thread_pool = VecDeque::<_>::new();
     //let mut thread_pool: std::collections::VecDeque<(std::thread::JoinHandle<()>, std::sync::mpsc::Receiver<std::vec::Vec<vec3::Vec3>>)> = VecDeque::new();
     let mut thread_pool = VecDeque::<_>::new();
@@ -349,6 +335,7 @@ fn main() {
         let (tx, rx) = mpsc::channel();
         let camera_clone = cam.clone();
         let mut world_clone = world.clone();
+        let lights_clone = lights.clone();
         thread_pool.push_back((
             thread::spawn(move || {
                 let channel_send = tx.clone();
@@ -363,12 +350,10 @@ fn main() {
                             let u = (i as f64 + rtweekend::random_double_1()) / (image_width as f64);
                             let v = (j as f64 + rtweekend::random_double_1()) / (image_height as f64);
                             let mut r = camera_clone.get_ray(u, v);
-                            pixel_color += ray_color(&mut r, &mut background, &world_clone, MAX_DEPTH);
+                            pixel_color += ray_color(&mut r, &mut background, &world_clone, lights_clone.clone(), MAX_DEPTH);
                         }
                         section_pixel_color.push(pixel_color);
                     }
-                    // progress += 1;
-                    // progress_bar.set_position(progress);
                 }
                 channel_send.send(section_pixel_color).unwrap();
                 // progress_bar.finish_with_message("Finished.");
@@ -386,8 +371,6 @@ fn main() {
         style("[3/5]").bold().dim(),
         style("PART III: PLEASE WAITING...TASK IN PROGRESS...").green(),
     );
-
-    //let collecting_progress_bar = MultiProgress::with_draw_target();
     let bar = ProgressBar::new(n_jobs as u64);
 
     for thread_id in 0..n_jobs {
@@ -395,16 +378,17 @@ fn main() {
         match thread.0.join() {
             Ok(_) => {
                 let mut received = thread.1.recv().unwrap();
-                output_pixel_color.append(&mut received);
-                bar.inc(1);    //
+                pixel_color.append(&mut received);
+                bar.inc(1);    
+                //use inc(1) to update progressbar
             }
             Err(_) => {
-                println!(
-                    "{} {}{}",
+                println!("{} {}{}",
                     style("FAILED TO JOIN THE").red(),
                     style(thread_id.to_string()).yellow(),
                     style("th THREAD").red(),
                 );
+                exit(1)
             }
         }
     }
@@ -421,17 +405,30 @@ fn main() {
         style("PART IV: IMAGE COLORING...").green()
     );
 
-    let mut pixel_id = 0;
+
+
+    let mut num = 0;
     for j in 0..image_height {
         for i in 0..image_width {
-            scene::write_to_img(
-                output_pixel_color[pixel_id],
-                samples_per_pixel,
-                &mut img,
-                i,
-                image_height - j - 1,
-            );
-            pixel_id += 1;
+            let mut r = pixel_color[num].x();
+            let mut g = pixel_color[num].y();
+            let mut b = pixel_color[num].z();
+            //根据样本数对颜色取平均值
+            let scale = 1.0 / (samples_per_pixel as f64);
+            //取根号, Gamma校正
+            r = f64::sqrt(r * scale);
+            g = f64::sqrt(g * scale);
+            b = f64::sqrt(b * scale);
+            let pixel = img.get_pixel_mut(i.try_into().unwrap(), (image_height - j - 1).try_into().unwrap());
+            *pixel = image::Rgb([
+                // print!("{} ",  (256.0 * clamp(r, 0.0, 0.999)) as i32);
+                // print!("{} ",  (256.0 * clamp(g, 0.0, 0.999)) as i32);
+                // print!("{}\n", (256.0 * clamp(b, 0.0, 0.999)) as i32);
+                (256.0 * scene::clamp(r, 0.0, 0.999)).floor() as u8,
+                (256.0 * scene::clamp(g, 0.0, 0.999)).floor() as u8,
+                (256.0 * scene::clamp(b, 0.0, 0.999)).floor() as u8,
+            ]);
+            num += 1;
         }
     }
 
