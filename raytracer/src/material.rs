@@ -11,20 +11,32 @@ use std::rc::Rc;
 use std::sync::Arc;
 type Color = Vec3;
 
-struct ScatterRecord {
-    specular_ray: ray::Ray,
-    is_specular: bool, //specular reflection: "镜面反射"
-    attenuation: Color,
-    pdf_ptr: Arc<dyn Pdf>
+#[derive(Clone)]
+pub struct ScatterRecord {
+    pub specular_ray: ray::Ray,
+    pub is_specular: bool, //specular reflection: "镜面反射"
+    pub attenuation: Color,
+    pub pdf_ptr: Arc<dyn Pdf>
 }
 
+impl ScatterRecord {
+    pub fn new() -> Self {
+        Self{ 
+            specular_ray: ray::Ray::new(Vec3::zero(), Vec3::zero(), 0.0), 
+            is_specular: false,
+            attenuation: Vec3::zero(),
+            pdf_ptr: Arc::new(CosinePdf::new(&Vec3::zero()))
+        }
+    }
+    pub fn atten(&self) -> Vec3 {self.attenuation}
+}
 
 pub trait Material: Sync + Send {
     // fn scatter(&self, r_in:&scene::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut scene::Ray) -> bool{
     //     return true
     // }
     //fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  attenuation:&mut Vec3,  scattered:&mut ray::Ray) -> bool;
-    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  alb:&mut Vec3,  scattered:&mut ray::Ray, pdf: &mut f64) -> bool {
+    fn scatter(&self, r_in:&ray::Ray,  rec:&scene::hit_record,  srec: &mut ScatterRecord) -> bool {
         false
     }
     fn emitted(&self, r_in: &ray::Ray, rec: &scene::hit_record, u: f64, v: f64, p: &Vec3) -> Color {
@@ -68,16 +80,21 @@ impl Material for lambertian {
     //     *pdf = 0.5 / rtweekend::pi ;
     //     return true
     // }
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, alb: &mut Vec3, mut scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, srec: &mut ScatterRecord) -> bool {
         //let mut scatter_direction = rec.normal + rtweekend::random_unit_vector();        
         //if scatter_direction.near_zero() {scatter_direction = rec.normal;}
-        let mut uvw = onb::ONB::new();
-        uvw.build_from_w(&rec.normal);
-        let direction = uvw.local_with_vec(&rtweekend::random_cosine_direction());
-        *scattered = ray::Ray::new(rec.p, direction.unit(), r_in.time());
-        *alb = self.albedo.value(rec.u, rec.v, &rec.p);
-        //*pdf = Vec3::dot( &rec.normal, scattered.direction() ) / rtweekend::pi ;
-        *pdf = Vec3::dot(&uvw.w(), scattered.direction()) / rtweekend::pi ;
+
+        // let mut uvw = onb::ONB::new();
+        // uvw.build_from_w(&rec.normal);
+        // let direction = uvw.local_with_vec(&rtweekend::random_cosine_direction());
+        // *scattered = ray::Ray::new(rec.p, direction.unit(), r_in.time());
+        // *alb = self.albedo.value(rec.u, rec.v, &rec.p);
+        // *pdf = Vec3::dot(&uvw.w(), scattered.direction()) / rtweekend::pi ;
+
+        (*srec).is_specular = false;
+        (*srec).attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
+        (*srec).pdf_ptr = Arc::new(CosinePdf::new(&rec.normal)); ///////
+
         return true
     }
     fn scattering_pdf(&self, r_in: &ray::Ray, rec: &mut scene::hit_record, scattered: &ray::Ray) -> f64 {
@@ -103,19 +120,24 @@ impl metal {
 }
 
 impl Material for metal {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool{
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, srec: &mut ScatterRecord) -> bool{
         let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
         // scattered = &mut scene::Ray::new(rec.p, reflected);
         //模糊反射 Fuzzy Reflection
-        scattered.orig = rec.p;
-        scattered.dir = reflected + rtweekend::random_in_unit_sphere() * self.fuzz;
-        scattered.tm = r_in.time();
-        *attenuation = self.albedo.clone();
-        // attenuation.x = self.albedo.x();
-        // attenuation.y = self.albedo.y();
-        // attenuation.z = self.albedo.z();
-        if Vec3::dot(scattered.direction(), &rec.normal) > 0.0 { return true }
-        else { return false }
+        // scattered.orig = rec.p;
+        // scattered.dir = reflected + rtweekend::random_in_unit_sphere() * self.fuzz;
+        // scattered.tm = r_in.time();
+        // *attenuation = self.albedo.clone();
+        // if Vec3::dot(scattered.direction(), &rec.normal) > 0.0 { return true }
+        // else { return false }
+
+        let reflected = Vec3::reflect(&r_in.direction().unit(), &rec.normal);
+        (*srec).specular_ray = ray::Ray::new(rec.p, reflected + rtweekend::random_in_unit_sphere() * self.fuzz, 0.0);
+        (*srec).attenuation = self.albedo.clone();
+        (*srec).is_specular = true;
+        (*srec).pdf_ptr = Arc::new(CosinePdf::new(&Vec3::zero()));
+
+        true
     }
 }
 
@@ -142,11 +164,11 @@ impl dielectric {
 }
 
 impl Material for dielectric {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, srec: &mut ScatterRecord) -> bool {
         //attenuation = &mut Vec3::ones();
-        attenuation.x = 1.0;
-        attenuation.y = 1.0;
-        attenuation.z = 1.0;
+        srec.is_specular = true;
+        srec.pdf_ptr = Arc::new(CosinePdf::new(&Vec3::zero()));
+        srec.attenuation = Vec3::ones();
         let refraction_ratio: f64;
         if rec.front_face {refraction_ratio = 1.0 / self.ir;}
         else {refraction_ratio = self.ir;}
@@ -161,9 +183,10 @@ impl Material for dielectric {
         if cannot_refract {direction = Vec3::reflect(&unit_direction, &rec.normal);}
         else {direction = Vec3::refract(&unit_direction, &rec.normal, refraction_ratio);}
 
-        scattered.orig = rec.p;
-        scattered.dir = direction;
-        scattered.tm = r_in.time();
+        // scattered.orig = rec.p;
+        // scattered.dir = direction;
+        // scattered.tm = r_in.time();
+        srec.specular_ray = ray::Ray::new(rec.p, direction, r_in.time());
         return true
     }
 }
@@ -189,7 +212,7 @@ impl diffuse_light {
 }
 
 impl Material for diffuse_light {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, srec: &mut ScatterRecord) -> bool {
         false //光源并不散射光线
     }
     fn emitted(&self, r_in: &ray::Ray, rec: &scene::hit_record, u: f64, v: f64, p: &Vec3) -> Color {
@@ -220,9 +243,9 @@ impl isotropic {
 }
 
 impl Material for isotropic {
-    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, attenuation: &mut Vec3, scattered: &mut ray::Ray, pdf: &mut f64) -> bool {
-        *scattered = ray::Ray::new(rec.p, rtweekend::random_in_unit_sphere(), r_in.time());
-        *attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
+    fn scatter(&self, r_in: &ray::Ray, rec: &scene::hit_record, srec: &mut ScatterRecord) -> bool {
+        srec.specular_ray = ray::Ray::new(rec.p, rtweekend::random_in_unit_sphere(), r_in.time());
+        srec.attenuation = self.albedo.value(rec.u, rec.v, &rec.p);
         return true
     }
 }

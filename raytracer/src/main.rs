@@ -47,7 +47,7 @@ impl World {
 }
 
 const MAX_DEPTH: i32 = 50; //限制递归深度
-
+/*
 pub fn ray_color(r: &mut Ray, background: &mut Color, world: &Arc<BVH::bvh::bvh_node>, lights: Arc<dyn scene::hittable>, depth: i32) -> Vec3 {
     let mut rec = scene::hit_record::new();
     if depth <= 0 { return Vec3::zero() }
@@ -107,8 +107,36 @@ pub fn ray_color(r: &mut Ray, background: &mut Color, world: &Arc<BVH::bvh::bvh_
     return emitted + 
         Vec3::cdot( &albedo, &ray_color(&mut scattered, background, world, lights, depth - 1) ) * temp_ptr.scattering_pdf(&r, &mut rec, &scattered) / pdf_val
 }
+*/
 
+//implement "scatter_record"
+pub fn ray_color(r: &mut Ray, background: &mut Color, world: &Arc<BVH::bvh::bvh_node>, lights: Arc<dyn scene::hittable>, depth: i32) -> Vec3 {
+    let mut rec = scene::hit_record::new();
+    if depth <= 0 { return Vec3::zero() }
 
+    if !world.hit(r, 0.001, infinity, &mut rec) {
+        return *background      //background.clone()
+    }
+    
+    let mut srec = material::ScatterRecord::new();
+    let emitted = rec.mat_ptr.emitted(r, &rec.clone(), rec.u, rec.v, &mut rec.p);
+
+    // if !rec.mat_ptr.scatter(&r, &rec, &mut attenuation, &mut scattered) {
+    //     return emitted
+    // }
+    if !rec.mat_ptr.scatter(&r, &rec, &mut srec) {return emitted}
+
+    let light_ptr = Arc::new(HittablePdf::new(lights.clone(), &rec.p));
+    let p = mixture_pdf::new(light_ptr, srec.pdf_ptr.clone());
+
+    let mut scattered = Ray::new(rec.p, p.generate(), r.time());
+    let pdf_val = p.value(scattered.direction());
+
+    let temp_ptr = rec.mat_ptr.clone();
+
+    return emitted + 
+        Vec3::cdot( &srec.atten(), &ray_color(&mut scattered, background, world, lights, depth - 1) ) * temp_ptr.scattering_pdf(&r, &mut rec, &scattered) / pdf_val
+}
 
 // fn main() {
 //     // get environment variable CI, which is true for GitHub Action

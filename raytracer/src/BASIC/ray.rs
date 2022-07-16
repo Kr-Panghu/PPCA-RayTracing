@@ -5,7 +5,7 @@ use crate::Vec3;
 type Point3 = Vec3;
 type Color = Vec3;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ray {
     pub orig: Point3,
     pub dir: Color,

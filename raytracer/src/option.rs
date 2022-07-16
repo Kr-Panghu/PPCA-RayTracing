@@ -337,6 +337,7 @@ pub fn get_world(op: usize,
             *aspect_ratio = 1.0;
             *image_width = 600;
             *samples_per_pixel = 200;
+            //*samples_per_pixel = 1000;
             *background = Color::new(0.0, 0.0, 0.0);
             *lookfrom = Point3::new(278.0, 278.0, -800.0);
             *lookat = Point3::new(278.0, 278.0, 0.0);
@@ -356,10 +357,10 @@ pub fn get_world(op: usize,
         }
         _ => {
         *aspect_ratio = 1.0;
-        // *image_width = 800;
-        // *samples_per_pixel = 10000;
-        *image_width = 400;
-        *samples_per_pixel = 20;
+        *image_width = 800;
+        *samples_per_pixel = 10000;
+        // *image_width = 400;
+        // *samples_per_pixel = 100;
         *background = Color::zero();
         *lookfrom = Point3::new(478.0, 278.0, -600.0);
         *lookat = Point3::new(278.0, 278.0, 0.0);

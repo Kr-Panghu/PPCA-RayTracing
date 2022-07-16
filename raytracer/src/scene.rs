@@ -3,10 +3,9 @@
 
 use crate::Vec3;
 use crate::World;
-use crate::BASIC::ray;
+use crate::BASIC::*;
 use std::rc::Rc;
 use crate::material;
-use crate::BVH::bvh;
 use crate::BVH::aabb::aabb;
 use std::sync::Arc;
 use crate::BASIC::camera;
@@ -17,34 +16,6 @@ type color = Vec3;
 use image::RgbImage;
 const infinity: f64 = std::f64::INFINITY;
 const pi: f64 = 3.1415926535897932385;
-
-// fn random_double() -> f64 {
-//     random_double()
-// }
-
-// Call the procedural macro, which will become `make_spheres` function.
-//make_spheres_impl! {}
-
-// These three structs are just written here to make it compile.
-// You should `use` your own structs in this file.
-// e.g. replace next two lines with
-// `use crate::materials::{DiffuseLight, ConstantTexture}
-
-//use crate::materials::{DiffuseLight, ConstantTexture};
-// pub struct ConstantTexture(Vec3);         //纹理
-// pub struct DiffuseLight(ConstantTexture); //漫反射光
-
-// impl ConstantTexture {
-//     pub fn new() -> Self {
-//         Self(Vec3::ones())
-//     }
-// }
-
-// impl DiffuseLight {
-//     pub fn new() -> Self{
-//         Self(ConstantTexture::new())
-//     }
-// }
 
 pub struct Sphere {
     center: Vec3,            //中心位置
@@ -223,6 +194,13 @@ impl hittable for Sphere {
         *output_box = aabb::new_with_para( &(self.center - Vec3::ones() * self.radius)
                                           ,&(self.center + Vec3::ones() * self.radius) );
         return true;
+    }
+    fn random(&self, o: &Vec3) -> Vec3 {
+        let direction = self.center - *o;
+        let distance_squared = direction.squared_length();
+        let mut uvw = onb::ONB::new();
+        uvw.build_from_w(&direction);
+        uvw.local_with_vec(&rtweekend::random_to_sphere(self.radius, distance_squared))
     }
 }
 
