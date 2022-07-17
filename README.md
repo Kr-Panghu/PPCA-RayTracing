@@ -29,10 +29,10 @@
 
 ## 渲染效果
 
+![light1](./output/light1.png)
+
+
 ![1](./output/image_final.png)
-
-
-<img src="./output/light1.png" alt="light1" style="zoom:50%;" />
 
 
 ![light2](./output/light2.png)
