@@ -52,7 +52,7 @@ Enlightening：
 
 * Book3降噪处理效果显著，前后对比
 
-![orig](./output/Origin.png)
+![orig](./output/Original.png)
 
 
 
