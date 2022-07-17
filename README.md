@@ -1,5 +1,3 @@
-[toc]
-
 # Kr's RayTracer
 
 ## Intro
@@ -20,23 +18,14 @@
 
   - [x] 整理源文件结构
   - [x] 规范变量命名
-  - [x] 规范浮点数计算，处理精度问题
-- 改进算法
-
-  - [ ] 合并三个方向的 `Rectangle` 类
-  - [x] 实现单向透光的 `OneWayRectangle` 类
   - [x] 实现 `Transform` 类的 PDF 功能
-  - [x] 修正教程中 PDF 相关公式错误，实现更合理的混合多种 PDF 的方式
-- 扩展功能
-
-  - [ ] 使用 GitHub Action，实现自动根据 tag 将稳定版本代码编译运行，并将生成结果上传至 Release
-  - [x] 提供友好的控制台 UI 界面
+  - [x] 使用 GitHub Action，创建了相关branches
+  - [x] 提供较友好的控制台 UI 界面
   - [x] 支持多线程，采用progressingbar进度条
   - [x] 以自定义质量因子的 `JPEG` 格式输出渲染结果，平衡图像大小与质量
   - [ ] 支持从 `obj` 格式文件输入场景
   - [ ] 支持从 `yaml` 或 `JSON` 文件读取场景并生成对应的静态 BVH 数据
   - [ ] 使用 `criterion crate` 实现基准测试 (Benchmark)，用于比较不同版本代码的差异
-
 
 
 ## 渲染效果
@@ -52,21 +41,21 @@
 - **create**
   - `scene`
   - **basic**
-    - `vec3`, `ray`, `camera`, `onb`
+    - `camera`, `ray`, `vec3`, `onb`, `rtweekend`
   - **hittable**
     - `obj_model`
     - **instance**
-      - `translate`, `rotate`, `motion_translate`, `motion_rotate`, `zoom`,  `constant_medium`
+      - `Translate`, `Rotate`, `ConstantMedium`
     - **object**
-      - `sphere`, `rectangle`, `cube`, `triangle`, `ring`
+      - `Sphere`, `rectangle`, `Box`
   - **bvh**
     - `aabb`, `bvh_node`
   - **material**
     - `lambertian`, `metal`, `dielectric`, `diffuse_light`, `isotropic`
   - **pdf**
-    - `cos_pdf`, `hittable_pdf`
+    - `CosinePdf`, `HittablePdf`
   - **texture**
-    - `solid_color`, `image_texture`, `checker`, `gradient`
+    - `solid_color`, `image_texture`, `checker_texture`, `noise_texture`
 
 
 
