@@ -32,7 +32,7 @@
 ![1](./output/image_final.png)
 
 
-![light1](./output/light1.png)
+<img src="./output/light1.png" alt="light1" style="zoom:200%;" />
 
 
 ![light2](./output/light2.png)
