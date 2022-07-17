@@ -43,6 +43,105 @@
 
 ![3](./output/5.png)
 
+
+## Some details
+
+* 通过一个月相对高强度的Rust学习与Coding，第一次体验到做一个完整项目的小小成就感与乐趣。同样涉及计算机图形学领域，RayTracer在视觉效果上给人带来的愉悦，远远大于大一第一学期的Histogram Equalization。
+
+Enlightening：
+
+* Book3降噪处理效果显著，前后对比
+
+![orig](./output/origin.png)
+
+
+
+![mixture](./output/mixture.png)
+
+
+
+* MultiThread实现
+
+~~~Rust
+for thread_id in 0..n_jobs {
+        let line_beg = section_line_num * thread_id;
+        let line_end = if line_beg + section_line_num > image_height || (thread_id == n_jobs - 1 && line_beg + section_line_num < image_height) {
+            image_height
+        } 
+        else {
+            line_beg + section_line_num
+        };
+
+        let (tx, rx) = mpsc::channel();
+        let camera_clone = cam.clone();
+        let mut world_clone = world.clone();
+        let lights_clone = lights.clone();
+        thread_pool.push_back((
+            thread::spawn(move || {
+                let channel_send = tx.clone();
+
+                let mut section_pixel_color = Vec::<Vec3>::new();
+
+                for j in line_beg..line_end {
+                    for i in 0..image_width {
+                        let mut pixel_color = Vec3::zero();
+                        // take samples_per_pixel samples and average them
+                        for _s in 0..samples_per_pixel {
+                            let u = (i as f64 + BASIC::rtweekend::random_double_1()) / (image_width as f64);
+                            let v = (j as f64 + BASIC::rtweekend::random_double_1()) / (image_height as f64);
+                            let mut r = camera_clone.get_ray(u, v);
+                            pixel_color += ray_color(&mut r, &mut background, &world_clone, lights_clone.clone(), MAX_DEPTH);
+                        }
+                        section_pixel_color.push(pixel_color);
+                    }
+                }
+                channel_send.send(section_pixel_color).unwrap();
+                // progress_bar.finish_with_message("Finished.");
+            }),
+            rx,
+        ));
+}
+~~~
+
+* 友好的Terminal交互界面
+
+![terminal](./output/terminal.png)
+
+
+
+Deficiency：
+
+* 缺乏对建模原理更深的理解，没能基于教程的算法进行矫正或优化
+* 对Rust语法掌握的不够系统，bug层出不穷（
+* 一些函数的常数较大，可能添加了一些非必要的clone()
+
+~~~Rust
+//==================守护Rust最好的螃蟹====================//
+/*
+                          \\/
+     ▒▒          ▒▒▒▒▒▒▒▒      ▒▒▒▒▒▒▒▒          ▒▒
+   ▒▒▒▒  ▒▒    ▒▒        ▒▒  ▒▒        ▒▒    ▒▒  ▒▒▒▒
+   ▒▒▒▒  ▒▒  ▒▒            ▒▒            ▒▒  ▒▒  ▒▒▒▒
+ ░░▒▒▒▒░░▒▒  ▒▒            ▒▒            ▒▒  ▒▒░░▒▒▒▒
+   ▓▓▓▓▓▓▓▓  ▓▓      ▓▓██  ▓▓  ▓▓██      ▓▓  ▓▓▓▓▓▓▓▓
+     ▒▒▒▒    ▒▒      ████  ▒▒  ████      ▒▒░░  ▒▒▒▒
+       ▒▒  ▒▒▒▒▒▒        ▒▒▒▒▒▒        ▒▒▒▒▒▒  ▒▒
+         ▒▒▒▒▒▒▒▒▒▒▓▓▓▓▓▓▒▒▒▒▒▒▒▒▓▓▒▒▓▓▒▒▒▒▒▒▒▒
+           ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+             ▒▒▒▒▒▒▒▒▒▒██▒▒▒▒▒▒██▒▒▒▒▒▒▒▒▒▒
+           ▒▒  ▒▒▒▒▒▒▒▒▒▒██████▒▒▒▒▒▒▒▒▒▒  ▒▒
+         ▒▒    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒    ▒▒
+       ▒▒    ▒▒    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒    ▒▒    ▒▒
+       ▒▒  ▒▒    ▒▒                  ▒▒    ▒▒  ▒▒
+           ▒▒  ▒▒                      ▒▒  ▒▒
+*/
+//======================================================//
+~~~
+
+
+
+
+
 ## Module Tree
 
 - **create**
