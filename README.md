@@ -31,7 +31,15 @@
 
 ![1](./output/image_final.png)
 
+
+![light1](./output/light1.png)
+
+
+![light2](./output/light2.png)
+
+
 ![2](./output/FINAL_SCENE.png)
+
 
 ![3](./output/5.png)
 
