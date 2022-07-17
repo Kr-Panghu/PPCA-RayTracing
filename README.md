@@ -5,8 +5,7 @@
 - Author：Kr Cen from SJTU, 21级JOHN班
 - 2021-2022暑期小学期项目（小PPCA:joy:）
 - template from https://github.com/Mighty-A/raytracer-tutorial
-
-* 鸣谢助教叶哥 [Mighty-A](https://github.com/Mighty-A) 与我深夜激情debug（bushi
+- 鸣谢助教叶哥 [Mighty-A](https://github.com/Mighty-A) 与我深夜激情debug（bushi
 
 
 
